@@ -1,4 +1,4 @@
-import { AfterViewInit, Component, ElementRef, ViewChild } from '@angular/core';
+import { AfterViewInit, Component, ElementRef, HostListener, ViewChild } from '@angular/core';
 import { Game } from './libs/game';
 
 @Component({
@@ -14,11 +14,10 @@ export class AppComponent implements AfterViewInit {
   @ViewChild('renderer', {static : true}) rendererRef: ElementRef;
 
   constructor(){
-    this.game = new Game(800, 600);
   }
 
   ngAfterViewInit(): void {
+    this.game = new Game(800, 600);
     this.rendererRef.nativeElement.appendChild(this.game.domElement);
   }
-
 }

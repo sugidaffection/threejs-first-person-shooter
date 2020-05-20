@@ -1,10 +1,15 @@
 import { Body, Box, Material, Vec3, World } from 'cannon-es';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, Scene, Vector3, WebGLRenderer } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 
 export class Player extends Object3D {
 
   private mesh: Mesh;
   private body: Body;
+  private camera: PerspectiveCamera;
+
+  private moveSpeed = 5.0;
+  private jumpPower = 5.0;
 
   controller = {
     left: 'KeyA',
@@ -14,72 +19,92 @@ export class Player extends Object3D {
     jump: 'Space'
   };
 
+  public controls: PointerLockControls;
+
   constructor(renderer: WebGLRenderer, scene: Scene, world: World) {
     super();
 
     this.mesh = new Mesh(
-      new BoxGeometry(1, 2, 1),
-      new MeshBasicMaterial({color: 0xFFFFFF, wireframe: true})
+      new BoxGeometry(1, 1, 1),
+      new MeshBasicMaterial({color: 0xFFFFFF, wireframe: false})
     );
 
     this.add(this.mesh);
     scene.add(this);
 
     const boxMaterial = new Material();
-    const boxShape = new Box(new Vec3(.5, 1, .5));
-    this.body = new Body({mass: .1, shape: boxShape, material: boxMaterial});
+    const boxShape = new Box(new Vec3(.5, .5, .5));
+    this.body = new Body({mass: 1, shape: boxShape, material: boxMaterial});
     world.addBody(this.body);
-    var camera = scene.getObjectByName('camera');
 
-    document.addEventListener('click', () => {
-      this.body.position.set(10, 10, 0);
-    });
+    const width = renderer.domElement.width;
+    const height = renderer.domElement.height;
+
+    this.camera = new PerspectiveCamera(75, width / height, .1, 1000);
+    this.camera.position.setY(this.position.y + 2);
+
+    this.controls = new PointerLockControls(this.camera, renderer.domElement);
+
+    this.add(this.camera);
+
+    this.camera.rotation.set(0, Math.PI, 0);
 
   }
 
-  update(): void{
-    const bodyPosition: Vec3 = this.body.position;
-    const position: Vector3 = new Vector3(bodyPosition.x, bodyPosition.y, bodyPosition.z);
-
-    this.mesh.position.copy(position);
+  getCamera(){
+    return this.camera;
   }
 
-  moveLeft(): void {
-    this.body.position.x -= .1;
+  update(dt): void{
+    this.body.position.x = this.camera.position.x;
+    this.body.position.z = this.camera.position.z;
+
+    this.camera.position.y = this.body.position.y;
+
+    this.position.x = this.body.position.x;
+    this.position.y = this.body.position.y;
+    this.position.z = this.body.position.z;
+
+    this.rotation.copy(this.camera.rotation);
   }
 
-  moveRight(): void {
-    this.body.position.x += .1;
+  moveLeft(dt): void {
+    this.controls.moveRight(-this.moveSpeed * dt);
   }
 
-  moveForward(): void {
-    this.body.position.z -= .1;
+  moveRight(dt): void {
+    this.controls.moveRight(this.moveSpeed * dt);
   }
 
-  moveBackward(): void {
-    this.body.position.z += .1;
+  moveForward(dt): void {
+    this.controls.moveForward(this.moveSpeed * dt);
   }
 
-  jump(): void {
-    this.body.position.y += .1;
+  moveBackward(dt): void {
+    this.controls.moveForward(-this.moveSpeed * dt);
   }
 
-  public event(keyboard): void {
-    if (keyboard[this.controller.left]) {
-      this.moveLeft();
+  jump(dt): void {
+    this.body.velocity.y = this.jumpPower;
+  }
+
+  public event(input, dt): void {
+    if (input[this.controller.left]) {
+      this.moveLeft(dt);
     }
-    if (keyboard[this.controller.right]) {
-      this.moveRight();
+    if (input[this.controller.right]) {
+      this.moveRight(dt);
     }
-    if (keyboard[this.controller.forward]) {
-      this.moveForward();
+    if (input[this.controller.forward]) {
+      this.moveForward(dt);
     }
-    if (keyboard[this.controller.backward]) {
-      this.moveBackward();
+    if (input[this.controller.backward]) {
+      this.moveBackward(dt);
     }
-    if (keyboard[this.controller.jump]) {
-      this.jump();
+    if (input[this.controller.jump]) {
+      this.jump(dt);
     }
+
   }
 
 }
