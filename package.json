@@ -21,8 +21,10 @@
     "@angular/platform-browser": "~9.1.7",
     "@angular/platform-browser-dynamic": "~9.1.7",
     "@angular/router": "~9.1.7",
+    "@types/socket.io-client": "^1.4.33",
     "cannon-es": "^0.9.1",
     "rxjs": "~6.5.4",
+    "socket.io-client": "^2.3.0",
     "three": "^0.116.1",
     "tslib": "^1.10.0",
     "zone.js": "~0.10.2"

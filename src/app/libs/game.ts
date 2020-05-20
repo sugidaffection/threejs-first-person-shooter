@@ -1,15 +1,22 @@
-import { Body, Box, CannonDebugRenderer, Material, NaiveBroadphase, Sphere, Vec3, World } from 'cannon-es';
+import { Body, Box, Material, NaiveBroadphase, Sphere, Vec3, World } from 'cannon-es';
 import {
   BoxGeometry,
   Clock,
   DoubleSide,
   Mesh,
   MeshBasicMaterial,
+
+
   PerspectiveCamera,
   PlaneGeometry,
   Quaternion, Scene, SphereGeometry, TextureLoader, Vector3, WebGLRenderer
 } from 'three';
 import { Player } from './player';
+
+interface Obj3D {
+  mesh: Mesh,
+  body: Body
+}
 
 export class Game {
 
@@ -21,6 +28,8 @@ export class Game {
   private world: World;
 
   private player: Player;
+  private players: Player[] = [];
+
   private plane;
   private skybox;
   private input = {};
@@ -28,12 +37,10 @@ export class Game {
   private cameraReady: boolean;
   private isReady: boolean;
 
-  private bullets: {}[] = [];
-  private box: {}[] = [];
+  private bullets: Obj3D[] = [];
+  private box: Obj3D[] = [];
 
-  private debug: CannonDebugRenderer;
-
-  constructor(width: number, height: number){
+  constructor(width: number, height: number, socket){
    this.scene = new Scene();
    this.renderer = new WebGLRenderer({
      antialias: true
@@ -50,8 +57,9 @@ export class Game {
 
    this.setupKeyboard();
    this.setupPhysisc();
-   this.setup();
 
+   this.setPlayer(socket.id);
+   this.setup();
 
    this.player.controls.addEventListener('lock', () => {
     this.resize(window.innerWidth, window.innerHeight);
@@ -71,6 +79,8 @@ export class Game {
     this.player.update(dt);
     this.player.event(this.input, dt);
     this.updateCamera(dt);
+
+    socket.emit('update', {id: this.player.getPlayerId(), player: this.player});
 
     for (const bullet of this.bullets){
       bullet.mesh.position.copy(new Vector3(
@@ -144,6 +154,56 @@ export class Game {
 
   }
 
+  setPlayer(id){
+    if (this.players.some(player => player.id === id)){
+      this.player = this.players.find(player => player.id === id) as Player;
+      this.player.setPlayerId(id);
+      this.scene.add(this.player);
+    }else {
+      this.player = new Player(this.renderer, this.world);
+      this.player.setPlayerId(id);
+      this.scene.add(this.player);
+    }
+
+    this.players.push(this.player);
+  }
+
+  getPlayer(){
+    return this.player;
+  }
+
+  setId(id) {
+    this.player.setPlayerId(id);
+  }
+
+  addPlayers(data) {
+    data.forEach(user => {
+      if (!this.players.some(player => player.getPlayerId() === user.id)){
+        const player = new Player(this.renderer, this.world, 0xFF0000);
+        player.setPlayerId(user.id);
+        player.setPosition(user.data.position);
+        player.controls = null;
+        this.players.push(player);
+        this.scene.add(player);
+      }else if(user.id !== this.player.getPlayerId()) {
+        const player = this.players.find(p => p.getPlayerId() === user.id);
+        player.setPosition(user.data.position);
+        // player.setRotation(user.data.rotation);
+      }
+    });
+  }
+
+  disconnect(id){
+    if(this.players.some(player => player.getPlayerId() === id)){
+      const player = this.players.find(user => user.getPlayerId() === id);
+      this.world.removeBody(player.getBody());
+      this.scene.remove(player);
+
+      const index = this.players.indexOf(player);
+      this.players.splice(index, 1);
+    }
+  }
+
   resize(width: number, height: number): void {
     this.renderer.setSize(width, height);
     this.camera.aspect = width / height;
@@ -197,7 +257,6 @@ export class Game {
 
     this.scene.add(this.skybox);
 
-    this.player = new Player(this.renderer, this.scene, this.world);
     const planeMesh = new Mesh(
       new PlaneGeometry(20, 20),
       new MeshBasicMaterial({map: loader.load('assets/floor.jpg')})

@@ -1,5 +1,5 @@
 import { Body, Box, Material, Vec3, World } from 'cannon-es';
-import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PerspectiveCamera, WebGLRenderer } from 'three';
 import { PointerLockControls } from 'three/examples/jsm/controls/PointerLockControls';
 
 export class Player extends Object3D {
@@ -11,6 +11,8 @@ export class Player extends Object3D {
   private moveSpeed = 5.0;
   private jumpPower = 5.0;
 
+  private playerId;
+
   controller = {
     left: 'KeyA',
     right: 'KeyD',
@@ -21,16 +23,15 @@ export class Player extends Object3D {
 
   public controls: PointerLockControls;
 
-  constructor(renderer: WebGLRenderer, scene: Scene, world: World) {
+  constructor(renderer: WebGLRenderer, world: World, color=0xFFFFFF) {
     super();
 
     this.mesh = new Mesh(
       new BoxGeometry(1, 1, 1),
-      new MeshBasicMaterial({color: 0xFFFFFF, wireframe: false})
+      new MeshBasicMaterial({color, wireframe: false})
     );
 
     this.add(this.mesh);
-    scene.add(this);
 
     const boxMaterial = new Material();
     const boxShape = new Box(new Vec3(.5, .5, .5));
@@ -49,6 +50,35 @@ export class Player extends Object3D {
 
     this.camera.rotation.set(0, Math.PI, 0);
 
+  }
+
+  getBody(){
+    return this.body;
+  }
+
+  setPosition(position) {
+    this.position.set(position.x, position.y, position.z);
+  }
+
+  setRotation(rotation){
+    this.rotation.set(rotation.x, rotation.y, rotation.z);
+  }
+
+  toJSON(){
+    return {
+      id: this.playerId,
+      position: this.position,
+      rotation: this.rotation
+    };
+  }
+
+  getPlayerId() {
+    return this.playerId;
+  }
+
+  setPlayerId(id){
+    this.name = id;
+    this.playerId = id;
   }
 
   getCamera(){
