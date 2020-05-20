@@ -16,7 +16,7 @@ export class AppComponent implements AfterViewInit {
   @ViewChild('renderer', {static : true}) rendererRef: ElementRef;
 
   constructor(){
-    this.socket = io.connect('http://localhost:8080');
+    this.socket = io.connect('https://server.zenix.id');
   }
 
   ngAfterViewInit(): void {
