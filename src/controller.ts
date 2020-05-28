@@ -2,13 +2,19 @@ import { Camera } from "three";
 import { Player } from './player';
 
 enum Keyboard {
-  left = 'KeyA'
+  left = 'KeyA',
+  right = 'KeyD',
+  forward = 'KeyW',
+  back = 'KeyS',
+  jump = 'Space'
 }
 
 export class Controller {
 
   private camera: Camera;
   private player: Player;
+
+  private canJump: boolean = false;
 
   constructor(camera: Camera, player: Player){
 
@@ -17,12 +23,19 @@ export class Controller {
 
     addEventListener('keydown', this.keypress.bind(this));
     addEventListener('mousemove', this.mousemove.bind(this));
+    this.player.body.addEventListener('collide', this.collide.bind(this));
+  }
+
+  private collide(event: any): void {
+    if(event.body.mass == 0){
+      this.canJump = true;
+    }
   }
 
   private keypress(event: KeyboardEvent): void {
-    console.log(event.code)
-    if(event.code == Keyboard.left) {
-      this.player.body.velocity.x += .01;
+    if(event.code == Keyboard.jump && this.canJump) {
+      this.player.body.velocity.y += 5;
+      this.canJump = false;
     }
   }
 
@@ -31,7 +44,7 @@ export class Controller {
 
   update(){
     const position = this.player.position;
-    position.y += 2;
+    position.y += 1;
     this.camera.position.copy(position);
   }
 

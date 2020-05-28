@@ -5,6 +5,7 @@ export class Player extends Object3D {
 
   body!: Body;
 
+
   constructor() {
     super();
     this.setup();
@@ -23,7 +24,7 @@ export class Player extends Object3D {
     const shape = new Box(new Vec3(.25, .5, .25));
     this.body = new Body({shape, mass: 1});
     this.body.position.set(0, 5, 3);
-    this.body.fixedRotation = true;
+    this.body.angularDamping = 1;
   }
 
   update(): void {
