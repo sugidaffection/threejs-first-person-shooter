@@ -73,7 +73,8 @@ export class Controller {
   }
 
   update(){
-    const position = this.player.position;
+    const position = this.player.position.clone();
+    position.y + 1;
     this.camera.position.copy(position);
     // this.camera.lookAt(this.player.position);
   }
