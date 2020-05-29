@@ -43,19 +43,19 @@ export class Controller {
     }
 
     if(event.code == Keyboard.left) {
-      this.player.body.velocity.x -= 1;
+      this.player.body.velocity.x -= 2;
     }
 
     if(event.code == Keyboard.right) {
-      this.player.body.velocity.x += 1;
+      this.player.body.velocity.x += 2;
     }
 
     if(event.code == Keyboard.forward) {
-      this.player.body.velocity.z -= 1;
+      this.player.body.velocity.z -= 2;
     }
 
     if(event.code == Keyboard.back) {
-      this.player.body.velocity.z += 1;
+      this.player.body.velocity.z += 2;
     }
   }
 
@@ -73,9 +73,9 @@ export class Controller {
   }
 
   update(){
-    // const position = this.player.position;
-    // this.camera.position.copy(position);
-    this.camera.lookAt(this.player.position);
+    const position = this.player.position;
+    this.camera.position.copy(position);
+    // this.camera.lookAt(this.player.position);
   }
 
 }

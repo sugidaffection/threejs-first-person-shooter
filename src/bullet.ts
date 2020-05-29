@@ -15,20 +15,20 @@ export class Bullet extends Object3D {
     this.name = owner.uuid;
 
     const mesh = new Mesh(
-      new SphereGeometry(.5),
-      new MeshBasicMaterial()
+      new SphereGeometry(.1),
+      new MeshBasicMaterial({color: 0x000000})
     );
     this.add(mesh);
     Bullet.scene.add(this);
 
-    const shape = new Sphere(.5);
+    const shape = new Sphere(.1);
     this.body = new Body({shape: shape, mass: .1});
     this.body.velocity = velocity;
 
     const position = new Vec3(
-      5 * Math.sin(owner.quaternion.y) + owner.position.x,
+      -1 * Math.sin(owner.quaternion.y) + owner.position.x,
       owner.position.y,
-      5 * Math.cos(owner.quaternion.y) + owner.position.z
+      -1 * Math.cos(owner.quaternion.y) + owner.position.z
     );
     this.body.position.copy(position);
     Bullet.world.addBody(this.body);
