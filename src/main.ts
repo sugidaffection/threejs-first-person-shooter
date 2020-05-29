@@ -1,5 +1,6 @@
 import { Body, Box, NaiveBroadphase, Vec3, World } from 'cannon-es';
 import { BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { Bullet } from './bullet';
 import { Controller } from './controller';
 import { Player } from './player';
 
@@ -22,6 +23,9 @@ class Main {
     addEventListener('click', async () => {
       // await this.canvas.requestFullscreen();
       this.canvas.requestPointerLock();
+      if(document.pointerLockElement == this.canvas){
+        this.controller.enabled = true;
+      }
     });
     this.setup();
     this.renderer.setAnimationLoop(this.update.bind(this));
@@ -47,6 +51,9 @@ class Main {
     this.world.addBody(this.player.body);
 
     this.controller = new Controller(this.camera, this.player);
+
+    Bullet.world = this.world;
+    Bullet.scene = this.scene;
   }
 
   loadAllTextures(){
@@ -102,6 +109,7 @@ class Main {
     this.world.step(1/60);
     this.player.update();
     this.controller.update();
+    Bullet.update();
   }
 
   public static main() {

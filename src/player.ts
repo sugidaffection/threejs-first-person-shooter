@@ -1,5 +1,5 @@
 import { Body, Box, Vec3 } from 'cannon-es';
-import { BoxGeometry, Mesh, MeshPhongMaterial, Object3D, Vector3 } from 'three';
+import { BoxGeometry, Mesh, MeshPhongMaterial, Object3D } from 'three';
 
 export class Player extends Object3D {
 
@@ -28,8 +28,12 @@ export class Player extends Object3D {
   }
 
   update(): void {
-    const position = new Vector3();
-    position.fromArray(this.body.position.toArray());
-    this.position.copy(position);
+    this.position.fromArray(this.body.position.toArray());
+    
+    if(this.body.position.y < -20){
+      this.body.position.y = 5;
+      this.body.position.x = 0;
+      this.body.position.z = 0;
+    }
   }
 }
