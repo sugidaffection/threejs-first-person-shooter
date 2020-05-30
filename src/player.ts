@@ -1,4 +1,4 @@
-import { Body, Box, Vec3 } from 'cannon-es';
+import { Body, Sphere } from 'cannon-es';
 import { BoxGeometry, Mesh, MeshPhongMaterial, Object3D } from 'three';
 
 export class Player extends Object3D {
@@ -21,10 +21,9 @@ export class Player extends Object3D {
 
     this.add(mesh);
 
-    const shape = new Box(new Vec3(.25, .5, .25));
-    this.body = new Body({shape, mass: 1});
-    this.body.position.set(0, 5, 3);
-    this.body.angularDamping = 1;
+    const shape = new Sphere(.5);
+    this.body = new Body({shape, mass: 5});
+    this.body.linearDamping = .9;
   }
 
   update(): void {
@@ -34,6 +33,7 @@ export class Player extends Object3D {
       this.body.position.y = 5;
       this.body.position.x = 0;
       this.body.position.z = 0;
+      this.body.velocity.setZero();
     }
   }
 }
