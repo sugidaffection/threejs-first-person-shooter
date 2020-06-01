@@ -12,6 +12,7 @@ class Main {
   private readonly scene: Scene = new Scene();
   private readonly renderer: WebGLRenderer = new WebGLRenderer({antialias: false});
   private readonly camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 1000);
+  private readonly camera2: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 1000);
   private readonly canvas: HTMLElement = this.renderer.domElement;
   private readonly clock: Clock = new Clock();
   private readonly textureLoader: TextureLoader = new TextureLoader();
@@ -34,6 +35,10 @@ class Main {
   }
 
   setup(): void {
+
+    this.camera2.position.setZ(2);
+    this.camera2.position.setY(3);
+    this.camera2.setRotationFromAxisAngle(new Vector3(1,0,0), -Math.PI / 6);
 
     // setup world
     this.world.quatNormalizeSkip = 0;
@@ -141,9 +146,9 @@ class Main {
       Bullet.create(
         this.player.uuid.toString(), 
         new Vec3(
-          -2 * Math.sin(rotation.y) + this.player.position.x,
+          -1 * Math.sin(rotation.y) + this.player.position.x,
           this.player.position.y,
-          -2 * Math.cos(rotation.y) + this.player.position.z
+          -1 * Math.cos(rotation.y) + this.player.position.z
         ),
         new Vec3(
           -50 * Math.sin(rotation.y) + this.player.position.x,
@@ -155,10 +160,13 @@ class Main {
   }
 
   update(): void {
+    this.camera2.lookAt(this.player.position);
     this.renderer.render(this.scene, this.camera);
     this.world.step(1/60);
     this.player.update();
     this.controller.update(this.clock.getDelta());
+    this.player.rotation.y = this.controller.getObject().rotation.y;
+
     Bullet.update();
   }
 
