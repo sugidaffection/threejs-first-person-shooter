@@ -1,8 +1,20 @@
 import { Body, Box, ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { BoxGeometry, Clock, DoubleSide, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { AudioLoader, BoxGeometry, Clock, DoubleSide, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
+import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { Bullet } from './bullet';
 import { PointerLockControls } from './lib/PointerLockControls';
 import { Player } from './player';
+
+
+enum Keyboard {
+  left = 'KeyA',
+  right = 'KeyD',
+  forward = 'KeyW',
+  backward = 'KeyS',
+  jump = 'Space',
+  reload = 'KeyR'
+}
 
 class Main {
   private readonly world: World = new World({
@@ -17,6 +29,11 @@ class Main {
   private readonly clock: Clock = new Clock();
   private readonly textureLoader: TextureLoader = new TextureLoader();
   private readonly textures: Texture[] = [];
+  private readonly weapons: Object3D[] = [];
+  private footstepBuffer = null;
+  private shootBuffer = null;
+  private reloadBuffer = null;
+
   private player!: Player;
   private controller: any;
   
@@ -29,12 +46,39 @@ class Main {
     document.addEventListener('pointerlockchange', () => {
       this.controller.enabled = document.pointerLockElement == this.canvas;
     });
-    addEventListener('mousedown', this.shoot.bind(this));
+    addEventListener('mousedown', (event: MouseEvent) => {
+      if (event.button == 0 && this.controller.enabled) {
+        this.player.fire();
+      }
+      
+      if(event.button == 2 && this.controller.enabled) {
+        this.player.zoom = !this.player.zoom;
+        if(this.player.zoom) {
+          this.player.zoomIn();
+          this.camera.zoom = 5;
+          this.camera.updateProjectionMatrix();
+        }
+        else {
+          this.player.zoomOut();
+          this.camera.zoom = 1;
+          this.camera.updateProjectionMatrix();
+        }
+      }
+    });
+    addEventListener('keydown', this.keyEvent.bind(this));
+    addEventListener('keyup', this.keyEvent.bind(this));
     this.setup();
-    this.renderer.setAnimationLoop(this.update.bind(this));
+
   }
 
-  setup(): void {
+  async setup(): Promise<void> {
+
+    // setup renderer
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.setPixelRatio(devicePixelRatio);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(this.canvas);
 
     this.camera2.position.setZ(2);
     this.camera2.position.setY(3);
@@ -65,12 +109,8 @@ class Main {
     );
     this.world.addContactMaterial(cMaterial);
 
-    // setup renderer
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.setPixelRatio(devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.canvas);
+    // setup audio
+    await this.loadAudio();
 
     // setup scene
     this.loadAllTextures();
@@ -78,7 +118,18 @@ class Main {
     this.createSkyBox();
     this.createFloor();
 
+    // load weapons
+    await this.loadAllWeapons();
+
+    // setup player;
     this.player = new Player();
+    this.player.setWeapon(this.weapons[0]);
+    if(this.shootBuffer && this.footstepBuffer && this.reloadBuffer) {
+      this.player.setFireAudio(this.shootBuffer!);
+      this.player.setFootstepAudio(this.footstepBuffer!);
+      this.player.setReloadAudio(this.reloadBuffer!);
+    }
+
     this.scene.add(this.player);
     this.world.addBody(this.player.body);
 
@@ -89,6 +140,25 @@ class Main {
     Bullet.world = this.world;
     Bullet.scene = this.scene;
 
+    this.renderer.setAnimationLoop(this.update.bind(this));
+  }
+
+  async loadAudio(): Promise<void> {
+    const audioLoader = new AudioLoader();
+    // Load fire audio
+    this.shootBuffer = await audioLoader.loadAsync('/assets/sound/fire.wav');
+
+    // Load footstep audio
+    this.footstepBuffer = await audioLoader.loadAsync('/assets/sound/footstep.wav');
+
+    // Load reload audio
+    this.reloadBuffer = await audioLoader.loadAsync('/assets/sound/reload.mp3');
+  }
+
+  keyEvent(event: KeyboardEvent) {
+    if(this.controller.enabled && event.code == Keyboard.reload) {
+      this.player.reload();
+    }
   }
 
   loadAllTextures(){
@@ -99,6 +169,18 @@ class Main {
     floor.repeat.set(50, 50);
     floor.magFilter = NearestFilter;
     this.textures.push(floor);
+  }
+
+  async loadAllWeapons(): Promise<void>{
+    // Load ump47
+    const materials = await new MTLLoader().loadAsync('/assets/ump47.mtl');
+    materials.preload();
+
+    const object = await new OBJLoader().loadAsync('/assets/ump47.obj');
+    const obj: Object3D = new Object3D();
+    obj.add(object);
+
+    this.weapons.push(obj);
   }
 
   createLight(){
@@ -140,34 +222,16 @@ class Main {
     this.camera.updateProjectionMatrix();
   }
 
-  shoot(): void {
-    if (this.controller.enabled) {
-      const rotation = this.controller.getObject().rotation;
-      Bullet.create(
-        this.player.uuid.toString(), 
-        new Vec3(
-          -1 * Math.sin(rotation.y) + this.player.position.x,
-          this.player.position.y,
-          -1 * Math.cos(rotation.y) + this.player.position.z
-        ),
-        new Vec3(
-          -50 * Math.sin(rotation.y) + this.player.position.x,
-          0,
-          -50 * Math.cos(rotation.y) + this.player.position.z
-        )
-      );
-    }
-  }
-
   update(): void {
-    this.camera2.lookAt(this.player.position);
+    // this.camera2.lookAt(this.player.position);
     this.renderer.render(this.scene, this.camera);
     this.world.step(1/60);
     this.player.update();
-    this.controller.update(this.clock.getDelta());
+    this.controller.update(1/60);
     this.player.rotation.y = this.controller.getObject().rotation.y;
 
-    Bullet.update();
+    Bullet.update(this.clock.getDelta());
+    
   }
 
   public static main() {

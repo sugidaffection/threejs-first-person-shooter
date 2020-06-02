@@ -115,6 +115,7 @@ dist
 .yarn/install-state.gz
 .pnp.*
 
+.vscode/
 .vscode/*
 !.vscode/settings.json
 !.vscode/tasks.json
@@ -131,7 +132,8 @@ dist
 .LSOverride
 
 # Icon must end with two \r
-Icon
+Icon
+
 
 # Thumbnails
 ._*

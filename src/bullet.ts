@@ -8,23 +8,25 @@ export class Bullet extends Object3D {
   static bullets: Bullet[] = [];
 
   body: Body;
+  interval: number = 3;
 
   constructor(owner: string, position: Vec3, velocity: Vec3){
     super()
     this.name = owner;
 
     const mesh = new Mesh(
-      new SphereGeometry(.1, 32, 32),
+      new SphereGeometry(.03, 32, 32),
       new MeshBasicMaterial({color: 0x000000})
     );
     this.add(mesh);
     Bullet.scene.add(this);
 
-    const shape = new Sphere(.1);
+    const shape = new Sphere(.03);
     this.body = new Body({shape: shape, mass: 1});
     this.body.velocity = velocity;
     this.body.position.copy(position);
     Bullet.world.addBody(this.body);
+    this.position.fromArray(position.toArray());
   }
 
   public static create(owner: string, position: Vec3, velocity: Vec3): void {
@@ -33,12 +35,27 @@ export class Bullet extends Object3D {
     );
   }
 
-  public static update(): void {
-    Bullet.bullets.forEach(
-      bullet => {
-        bullet.position.fromArray(bullet.body.position.toArray());
+  public static update(dt: number): void {
+
+    for(const bullet of Bullet.bullets) {
+      bullet.position.fromArray(bullet.body.position.toArray());
+    }
+
+    for(const bullet of Bullet.bullets) {
+      if(bullet.interval >= 0) {
+        bullet.interval -= dt;
+      }else{
+        Bullet.destroy(bullet);
       }
-    )
+    }
+  }
+
+  public static destroy(bullet: Bullet): void {
+    Bullet.world.removeBody(bullet.body);
+    Bullet.scene.remove(bullet);
+    
+    const index = Bullet.bullets.indexOf(bullet);
+    Bullet.bullets.splice(index, 1);
   }
 
 }
