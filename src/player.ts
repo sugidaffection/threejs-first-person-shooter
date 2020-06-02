@@ -7,18 +7,21 @@ export class Player extends Object3D {
   body!: Body;
   walk: boolean = false;
   zoom: boolean = false;
+  isReloading: boolean = false;
 
   private readonly audioListener: AudioListener = new AudioListener();
 
   private ammo: number = 10;
   private maxAmmo: number = 10;
   private magazine: number = 10;
+  private maxMagazine: number = 10;
+
+  private bulletSpeed: number = 100;
 
   private fireAudio?: PositionalAudio;
   private footstepAudio?: PositionalAudio;
   private reloadAudio?: PositionalAudio;
   private weapon?: Object3D;
-  private isReloading: boolean = false;
 
   constructor() {
     super();
@@ -37,7 +40,8 @@ export class Player extends Object3D {
     this.add(mesh);
 
     const shape = new Sphere(.5);
-    this.body = new Body({shape: shape, mass: 5, linearDamping: .9});
+    this.body = new Body({shape: shape, mass: .5, linearDamping: .9});
+    this.position.fromArray(this.body.position.toArray());
 
     this.add(this.audioListener);
   }
@@ -58,15 +62,27 @@ export class Player extends Object3D {
     this.add(this.reloadAudio);
   }
 
+  fillMagazine() {
+    this.magazine = this.maxMagazine;
+  }
+
   setWeapon(object: Object3D): void {
     object.position.z -= .4;
     object.position.x += .2;
-    object.position.y -= .15;
+    object.position.y -= .17;
     object.rotation.y = Math.PI / 2;
     object.scale.set(.05, .05, .05);
 
     this.add(object);
     this.weapon = object;
+  }
+
+  getAmmo(): number {
+    return this.ammo;
+  }
+
+  getMagazine(): number {
+    return this.magazine;
   }
 
   fire(): void {
@@ -78,9 +94,9 @@ export class Player extends Object3D {
         .5 * -Math.cos(rotation.y) + this.position.z
       )
       const vel = new Vector3(
-        10 * -Math.sin(rotation.y),
+        this.bulletSpeed * -Math.sin(rotation.y) ,
         0,
-        10 * -Math.cos(rotation.y)
+        this.bulletSpeed * -Math.cos(rotation.y)
       )
 
       Bullet.create(
@@ -108,7 +124,7 @@ export class Player extends Object3D {
 
   zoomIn(){
     if(this.weapon){
-      this.weapon.position.x = .05;
+      this.weapon.position.x = .055;
     }
   }
 
@@ -137,12 +153,26 @@ export class Player extends Object3D {
     if(this.footstepAudio) {
       const velocity = this.body.velocity.clone();
       velocity.y = 0;
-      if(!velocity.almostZero(1) && !this.footstepAudio.isPlaying)
+      if(!velocity.almostZero(1)){
+        this.walk = true;
+      }else{
+        this.walk = false;
+      }
+
+      if(this.walk && !this.footstepAudio.isPlaying){
         this.footstepAudio.play();
+      }
     }
 
     if(this.reloadAudio) {
       this.isReloading = this.reloadAudio.isPlaying;
+    }
+
+    if(this.weapon) {
+      if(this.isReloading)
+        this.weapon.rotation.x = Math.PI / 4;
+      else 
+        this.weapon.rotation.x = 0;
     }
 
     if(this.body.position.y < -20){

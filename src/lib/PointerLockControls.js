@@ -10,7 +10,7 @@ var PointerLockControls = function ( camera, cannonBody ) {
 
   var eyeYPos = 2; // eyes are 2 meters above the ground
   var velocityFactor = 10;
-  var jumpVelocity = 20;
+  var jumpVelocity = 10;
   var scope = this;
 
   var pitchObject = new THREE.Object3D();
@@ -28,6 +28,8 @@ var PointerLockControls = function ( camera, cannonBody ) {
   var moveRight = false;
 
   var canJump = false;
+
+  this.lockY = false;
 
   var contactNormal = new CANNON.Vec3(); // Normal in the contact, pointing *out* of whatever the player touched
   var upAxis = new CANNON.Vec3(0,1,0);
@@ -58,9 +60,12 @@ var PointerLockControls = function ( camera, cannonBody ) {
       var movementY = event.movementY || event.mozMovementY || event.webkitMovementY || 0;
 
       yawObject.rotation.y -= movementX * 0.002;
-    //   pitchObject.rotation.x -= movementY * 0.002;
 
-    //   pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
+      if ( scope.lockY === false ){
+        pitchObject.rotation.x -= movementY * 0.002;
+
+        pitchObject.rotation.x = Math.max( - PI_2, Math.min( PI_2, pitchObject.rotation.x ) );
+      }
   };
 
   var onKeyDown = function ( event ) {
@@ -147,6 +152,8 @@ var PointerLockControls = function ( camera, cannonBody ) {
     //   if ( scope.enabled === false ) return;
 
     //   delta *= 0.1;
+
+    if ( scope.lockY === true ) pitchObject.rotation.x = 0;
 
       inputVelocity.set(0,0,0);
 

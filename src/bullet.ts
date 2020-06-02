@@ -22,7 +22,7 @@ export class Bullet extends Object3D {
     Bullet.scene.add(this);
 
     const shape = new Sphere(.03);
-    this.body = new Body({shape: shape, mass: 1});
+    this.body = new Body({shape: shape, mass: .3});
     this.body.velocity = velocity;
     this.body.position.copy(position);
     Bullet.world.addBody(this.body);
