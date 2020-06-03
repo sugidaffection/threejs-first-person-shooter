@@ -50,7 +50,7 @@ class Main {
   
   private players: Player[] = [];
 
-  private socket: SocketIOClient.Socket = io('http://localhost:8080');
+  private socket: SocketIOClient.Socket = io('https://server.zenix.id');
 
   constructor() {
     addEventListener('resize', this.resizeHandler.bind(this));

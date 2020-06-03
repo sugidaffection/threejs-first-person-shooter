@@ -33,6 +33,6 @@ module.exports = {
     ignored: /node_modules/
   },
   plugins: [
-    new CleanWebpackPlugin()
+    // new CleanWebpackPlugin()
   ]
 }
