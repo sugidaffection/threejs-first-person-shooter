@@ -1,11 +1,12 @@
 import { Body, Box, ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
+import io from 'socket.io-client';
 import { AudioListener, AudioLoader, BoxGeometry, CircleBufferGeometry, Clock, DirectionalLight, DoubleSide, Geometry, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, PositionalAudio, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { Box as CustomBox } from './box';
 import { Bullet } from './bullet';
 import { PointerLockControls } from './lib/PointerLockControls';
-import { Player } from './player';
+import { Player, PlayerJSON } from './player';
 
 enum Keyboard {
   left = 'KeyA',
@@ -31,6 +32,8 @@ class Main {
   private readonly audioListener: AudioListener = new AudioListener();
 
   private ammoPanel: HTMLElement = document.createElement('div');
+  private connectionPanel: HTMLElement = document.createElement('div');
+  private statusPanel: HTMLElement = document.createElement('ul');
 
   private footstepBuffer = null;
   private shootBuffer = null;
@@ -44,6 +47,10 @@ class Main {
   private controller: any;
   
   private boxes: CustomBox[] = [];
+  
+  private players: Player[] = [];
+
+  private socket: SocketIOClient.Socket = io('http://localhost:8080');
 
   constructor() {
     addEventListener('resize', this.resizeHandler.bind(this));
@@ -53,18 +60,111 @@ class Main {
     addEventListener('keydown', this.keyEvent.bind(this));
     addEventListener('keyup', this.keyEvent.bind(this));
     
-    this.setup();
+    const setup = this.setup();
+
+    this.socket.on('connect', async () => {
+
+      await setup;
+      console.log('connected');
+
+      this.player.name = this.socket.id;
+      this.socket.emit('join', this.player);
+      
+      this.socket.on('message::disconnect', (message) => {
+        console.log('message');
+        const li = document.createElement('li');
+        li.innerText = message;
+        li.className = 'warning'
+        this.statusPanel.append(li);
+        li.scrollIntoView();
+      });
+
+      this.socket.on('message::connect', (message) => {
+        console.log('message');
+        const li = document.createElement('li');
+        li.innerText = message;
+        li.className = 'info'
+        this.statusPanel.append(li);
+        li.scrollIntoView();
+      });
+
+      this.socket.on('player::all', (result: PlayerJSON[]) => {
+        result.forEach(data => {
+          let player = this.players.find(p => p.name == data.id);
+          if(!player){
+            player = this.createPlayer(data.id);
+            player.updateFromJSON(data);
+            this.players.push(player);
+          }
+        })
+      });
+      
+      this.socket.on('player::joined', (data: PlayerJSON) => {
+        let player = this.players.find(p => p.name == data.id);
+        if(!player){
+          player = this.createPlayer(data.id);
+          player.updateFromJSON(data);
+          this.players.push(player);
+        }
+      });
+
+      this.socket.on('player::update', (data: PlayerJSON) => {
+        let player = this.players.find(p => p.name == data.id);
+        if(player && player.name != this.player.name){
+          player.updateFromJSON(data);
+        }
+      });
+
+      this.socket.on('player::count', (count) => {
+        this.connectionPanel.innerText = `online : ${count}`;
+      });
+
+      this.socket.on('player::leave', (data: { id: string }) => {
+        let player = this.players.find(p => p.name == data.id);
+        if(player){
+          this.world.removeBody(player.body);
+          this.scene.remove(player);
+          
+          const idx = this.players.indexOf(player);
+          this.players.splice(idx, 1);
+        }
+      })
+
+      this.socket.on('player::shoot', (data: PlayerJSON) => {
+        let player = this.players.find(p => p.name == data.id);
+        if(player && player.name != this.player.name){
+          player.fire();
+        }
+      })
+
+      this.socket.on('player::reload', (data: PlayerJSON) => {
+        let player = this.players.find(p => p.name == data.id);
+        if(player && player.name != this.player.name){
+          player.reload();
+        }
+      })
+    })
+
+    this.socket.on('disconnect', () => {
+      const li = document.createElement('li');
+      li.innerText = 'disconnected from the game.';
+      li.className = 'warning'
+      this.statusPanel.append(li);
+      li.scrollIntoView();
+    })
   }
 
   private keyEvent(event: KeyboardEvent): void {
     if(this.controller.enabled && event.code == Keyboard.reload) {
       this.player.reload();
+      this.socket.emit('reload', this.player);
     }
   }
 
   private mouseEvent(event: MouseEvent): void {
     if (event.button == 0 && this.controller.enabled) {
       this.player.fire();
+      this.socket.emit('fire', this.player);
     }
     
     if(event.button == 2 && this.controller.enabled && !this.player.isReloading) {
@@ -182,11 +282,21 @@ class Main {
     document.body.appendChild(this.canvas);
   }
 
-
   setupUI(): void {
     this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
-    this.ammoPanel.classList.add('ammoPanel');
-    document.body.append(this.ammoPanel);
+    this.ammoPanel.className = 'panel ammoPanel';
+
+    this.connectionPanel.innerText = 'online : 1';
+    this.connectionPanel.className = 'panel connectionPanel';
+
+    this.statusPanel.className = 'panel statusPanel';
+
+    const panel = document.getElementById('panelUI');
+    if(panel) {
+      panel.append(this.ammoPanel);
+      panel.append(this.connectionPanel);
+      panel.append(this.statusPanel);
+    }
   }
 
   async loadAudio(): Promise<void> {
@@ -225,8 +335,8 @@ class Main {
     this.textures.push(await this.textureLoader.loadAsync('assets/circle.jpg'));
   }
 
-  createPlayer(name?: string): Player {
-    const player = new Player(this.audioListener, name);
+  createPlayer(name?: string, body?: boolean): Player {
+    const player = new Player(this.audioListener, name, '#fff', body);
     player.setWeapon(this.weapons[0].clone());
     if(this.shootBuffer && this.footstepBuffer && this.reloadBuffer) {
       player.setFireAudio(this.shootBuffer!);
@@ -234,7 +344,8 @@ class Main {
       player.setReloadAudio(this.reloadBuffer!);
     }
     this.scene.add(player);
-    this.world.addBody(player.body);
+    if(body !== false)
+      this.world.addBody(player.body);
     return player;
   }
 
@@ -285,10 +396,10 @@ class Main {
     ammoPoint.position.set(x, -.46, z);
 
     const audio = new PositionalAudio(this.audioListener);
+    audio.name = "music";
     audio.setBuffer(this.musicBuffer!);
     audio.setRefDistance(.3);
     audio.setLoop(true);
-    audio.play();
     
     ammoPoint.add(audio);
 
@@ -379,9 +490,15 @@ class Main {
       if(this.player.position.distanceTo(p.position) < 1) {
         this.player.fillMagazine();
       }
+      const audio: any = p.getObjectByName('music');
+
+      if(audio && !audio.isPlaying){
+        audio.play();
+      }
     })
 
     this.player.update();
+    this.players.forEach(player => player.update());
     this.controller.update(1/60);
     this.player.rotation.y = this.controller.getObject().rotation.y;
 
@@ -400,6 +517,7 @@ class Main {
 
     this.player.setGround(this.controller.ground);
     
+    this.socket.emit('update', this.player);
   }
 
   public static main() {

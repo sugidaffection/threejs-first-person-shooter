@@ -2,6 +2,28 @@ import { Body, Sphere, Vec3 } from 'cannon-es';
 import { AudioListener, BoxGeometry, Mesh, MeshPhongMaterial, Object3D, PositionalAudio, Vector3 } from 'three';
 import { Bullet } from './bullet';
 
+export interface PlayerJSON {
+  id: string,
+  pos: {
+    x: number,
+    y: number,
+    z: number
+  },
+  rot: {
+    x: number,
+    y: number,
+    z: number
+  },
+  vel: {
+    x: number,
+    y: number,
+    z: number
+  },
+  isGrounded: boolean,
+  ammo: number,
+  magazine: number
+}
+
 export class Player extends Object3D {
 
   body!: Body;
@@ -24,7 +46,7 @@ export class Player extends Object3D {
   private reloadAudio?: PositionalAudio;
   private weapon?: Object3D;
 
-  constructor(audioListener: AudioListener, name?: string, color?: string) {
+  constructor(audioListener: AudioListener, name?: string, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
     if(name) this.name = name;
@@ -40,9 +62,24 @@ export class Player extends Object3D {
     this.add(mesh);
 
     const shape = new Sphere(.4);
-    this.body = new Body({shape: shape, mass: .5, linearDamping: .9});
-    this.position.fromArray(this.body.position.toArray());
+    if(body !== false){
+      this.body = new Body({shape: shape, mass: .5, linearDamping: .9});
+      this.position.fromArray(this.body.position.toArray());
+    }
+  }
 
+  toJSON() {
+    return {
+      id: this.name,
+      pos: this.position,
+      rot: this.rotation.toVector3(),
+      vel: {
+        x: this.body.velocity.x,
+        y: this.body.velocity.y,
+        z: this.body.velocity.z
+      },
+      isGrounded: this.isGrounded
+    }
   }
 
   setFireAudio(audio: AudioBuffer): void {
@@ -148,6 +185,13 @@ export class Player extends Object3D {
       }
       this.isReloading = true;
     }
+  }
+
+  updateFromJSON(data: PlayerJSON): void {
+    this.body.position.set(data.pos.x, data.pos.y, data.pos.z);
+    this.rotation.set(data.rot.x, data.rot.y, data.rot.z);
+    this.body.velocity.set(data.vel.x, data.vel.y, data.vel.z);
+    this.isGrounded = data.isGrounded;
   }
 
   update(): void {

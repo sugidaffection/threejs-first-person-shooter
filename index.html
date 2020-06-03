@@ -11,18 +11,59 @@
     body {
       margin: 0;
     }
-    
-    .ammoPanel {
-      background-color: aliceblue;
+
+    #panelUI {
       position: absolute;
       top: 0;
       left: 0;
-      font-size: 20px;
+      right: 0;
+      bottom: 0;
+    }
+
+    .panel {
+      background-color: rgba(240, 248, 255, 0.616);
+      border-radius: 10px;
+      position: absolute;
       margin: 10px;
+    }
+    
+    .ammoPanel {
+      font-size: 20px;
+      left: 0;
+      top: 0;
+      padding: 5px;
+    }
+
+    .connectionPanel {
+      top: 0;
+      right: 0;
+      padding: 5px;
+    }
+
+    .statusPanel {
+      bottom: 0;
+      left:  0;
+      list-style: none;
+      max-height: 150px;
+      overflow: hidden;
+      padding: 0;
+    }
+
+    .statusPanel li {
+      padding: 2px 10px;
+    }
+
+    .statusPanel li.info {
+      color: green;
+    }
+
+    .statusPanel li.warning {
+      color: red;
     }
   </style>
 </head>
 <body>
+  <div id="panelUI"></div>
   <script src="dist/build/bundle.js"></script>
 </body>
 </html>
