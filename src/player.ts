@@ -8,13 +8,14 @@ export class Player extends Object3D {
   walk: boolean = false;
   zoom: boolean = false;
   isReloading: boolean = false;
+  isGrounded: boolean = false;
 
-  private readonly audioListener: AudioListener = new AudioListener();
+  private audioListener: AudioListener;
 
-  private ammo: number = 10;
-  private maxAmmo: number = 10;
-  private magazine: number = 10;
-  private maxMagazine: number = 10;
+  private ammo: number = 20;
+  private maxAmmo: number = 25;
+  private magazine: number = 30;
+  private maxMagazine: number = 30;
 
   private bulletSpeed: number = 100;
 
@@ -23,27 +24,25 @@ export class Player extends Object3D {
   private reloadAudio?: PositionalAudio;
   private weapon?: Object3D;
 
-  constructor() {
+  constructor(audioListener: AudioListener, name?: string, color?: string) {
     super();
-    this.setup();
-  }
-
-  private setup(): void {
-
+    this.audioListener = audioListener;
+    if(name) this.name = name;
+    
     const mesh = new Mesh(
-      new BoxGeometry(.5, 1, .5),
-      new MeshPhongMaterial({color: 0xff0000})
+      new BoxGeometry(.5, .7, .5),
+      new MeshPhongMaterial({color: color || 0xff0000})
     );
+
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
     this.add(mesh);
 
-    const shape = new Sphere(.5);
+    const shape = new Sphere(.4);
     this.body = new Body({shape: shape, mass: .5, linearDamping: .9});
     this.position.fromArray(this.body.position.toArray());
 
-    this.add(this.audioListener);
   }
 
   setFireAudio(audio: AudioBuffer): void {
@@ -69,12 +68,16 @@ export class Player extends Object3D {
   setWeapon(object: Object3D): void {
     object.position.z -= .4;
     object.position.x += .2;
-    object.position.y -= .17;
+    object.position.y -= .16;
     object.rotation.y = Math.PI / 2;
     object.scale.set(.05, .05, .05);
 
     this.add(object);
     this.weapon = object;
+  }
+
+  setGround(value: boolean): void {
+    this.isGrounded = value;
   }
 
   getAmmo(): number {
@@ -89,9 +92,9 @@ export class Player extends Object3D {
     if (this.ammo > 0 && !this.isReloading) {
       const rotation = this.rotation;
       const position = new Vector3(
-        .5 * -Math.sin(rotation.y) + this.position.x, 
+        .7 * -Math.sin(rotation.y) + this.position.x, 
         this.position.y, 
-        .5 * -Math.cos(rotation.y) + this.position.z
+        .7 * -Math.cos(rotation.y) + this.position.z
       )
       const vel = new Vector3(
         this.bulletSpeed * -Math.sin(rotation.y) ,
@@ -124,7 +127,7 @@ export class Player extends Object3D {
 
   zoomIn(){
     if(this.weapon){
-      this.weapon.position.x = .055;
+      this.weapon.position.x = .0535;
     }
   }
 
@@ -159,8 +162,13 @@ export class Player extends Object3D {
         this.walk = false;
       }
 
-      if(this.walk && !this.footstepAudio.isPlaying){
+      if(this.isGrounded && this.walk && !this.footstepAudio.isPlaying){
         this.footstepAudio.play();
+      }
+
+      if(!this.isGrounded && this.footstepAudio.isPlaying) {
+        this.walk = false;
+        this.footstepAudio.stop();
       }
     }
 

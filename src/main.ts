@@ -1,12 +1,11 @@
 import { Body, Box, ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { AudioLoader, BoxGeometry, CircleBufferGeometry, Clock, DirectionalLight, DoubleSide, Geometry, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { AudioListener, AudioLoader, BoxGeometry, CircleBufferGeometry, Clock, DirectionalLight, DoubleSide, Geometry, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, PositionalAudio, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { Box as CustomBox } from './box';
 import { Bullet } from './bullet';
 import { PointerLockControls } from './lib/PointerLockControls';
 import { Player } from './player';
-
 
 enum Keyboard {
   left = 'KeyA',
@@ -18,23 +17,25 @@ enum Keyboard {
 }
 
 class Main {
-  private readonly world: World = new World({
-    broadphase: new NaiveBroadphase(),
-    gravity: new Vec3(0, -20, 0)
-  })
+
+  private readonly world: World = new World()
   private readonly scene: Scene = new Scene();
   private readonly renderer: WebGLRenderer = new WebGLRenderer({antialias: false});
   private readonly camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 1000);
-  private readonly camera2: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 1000);
   private readonly canvas: HTMLElement = this.renderer.domElement;
   private readonly clock: Clock = new Clock();
   private readonly textureLoader: TextureLoader = new TextureLoader();
   private readonly textures: Texture[] = [];
   private readonly weapons: Object3D[] = [];
 
+  private readonly audioListener: AudioListener = new AudioListener();
+
+  private ammoPanel: HTMLElement = document.createElement('div');
+
   private footstepBuffer = null;
   private shootBuffer = null;
   private reloadBuffer = null;
+  private musicBuffer = null;
 
   private ammoPoints: Mesh[] = [];
   private particles: {geo: Geometry, pos: Vector3[], vel: Vector3[]}[] = [];
@@ -43,69 +44,123 @@ class Main {
   private controller: any;
   
   private boxes: CustomBox[] = [];
-  
+
   constructor() {
     addEventListener('resize', this.resizeHandler.bind(this));
-    addEventListener('click', async () => {
-      // await this.canvas.requestFullscreen();
-      this.canvas.requestPointerLock();
-    });
-    document.addEventListener('pointerlockchange', () => {
-      this.controller.enabled = document.pointerLockElement == this.canvas;
-    });
-    addEventListener('mousedown', (event: MouseEvent) => {
-      if (event.button == 0 && this.controller.enabled) {
-        this.player.fire();
-      }
-      
-      if(event.button == 2 && this.controller.enabled && !this.player.isReloading) {
-        this.player.zoom = !this.player.zoom;
-        if(this.player.zoom) {
-          this.player.zoomIn();
-          this.camera.zoom = 5;
-          this.camera.updateProjectionMatrix();
-          this.controller.lockY = true;
-        }
-        else {
-          this.player.zoomOut();
-          this.camera.zoom = 1;
-          this.camera.updateProjectionMatrix();
-          this.controller.lockY = false;
-        }
-      }
-    });
+    addEventListener('click', async () => this.canvas.requestPointerLock());
+    document.addEventListener('pointerlockchange', () => this.controller.enabled = document.pointerLockElement == this.canvas);
+    addEventListener('mousedown', this.mouseEvent.bind(this));
     addEventListener('keydown', this.keyEvent.bind(this));
     addEventListener('keyup', this.keyEvent.bind(this));
+    
     this.setup();
+  }
+
+  private keyEvent(event: KeyboardEvent): void {
+    if(this.controller.enabled && event.code == Keyboard.reload) {
+      this.player.reload();
+    }
+  }
+
+  private mouseEvent(event: MouseEvent): void {
+    if (event.button == 0 && this.controller.enabled) {
+      this.player.fire();
+    }
+    
+    if(event.button == 2 && this.controller.enabled && !this.player.isReloading) {
+      this.player.zoom = !this.player.zoom;
+      if(this.player.zoom) {
+        this.player.zoomIn();
+        this.camera.zoom = 5;
+        this.camera.updateProjectionMatrix();
+        this.controller.lockY = true;
+      }
+      else {
+        this.player.zoomOut();
+        this.camera.zoom = 1;
+        this.camera.updateProjectionMatrix();
+        this.controller.lockY = false;
+      }
+    }
+  }
+
+  private resizeHandler(): void {
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    this.camera.aspect = window.innerWidth / window.innerHeight;
+    this.camera.updateProjectionMatrix();
   }
 
   async setup(): Promise<void> {
 
-    // setup renderer
-    this.renderer.shadowMap.enabled = true;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.setPixelRatio(devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.canvas);
-
-    this.camera2.position.setZ(2);
-    this.camera2.position.setY(3);
-    this.camera2.setRotationFromAxisAngle(new Vector3(1,0,0), -Math.PI / 6);
+    // load assets
+    await this.loadAudio();
+    await this.loadAllWeapons();
+    await this.loadAllTextures();
 
     // setup world
+    this.setupWorld();
+
+    // setup renderer
+    this.setupRenderer();
+
+    // setup scene
+    this.createLight();
+    this.createSkyBox();
+
+    this.createFloor(50, 50, new Vec3(0, -1, 0));
+    this.createFloor(1, 1, new Vec3(3, 0, 3), .1);
+    this.createFloor(1, 1, new Vec3(5, .5, 3), .1);
+    this.createFloor(1, 1, new Vec3(7, 1, 3), .1);
+    this.createFloor(1, 1, new Vec3(9, 1.5, 3), .1);
+    this.createFloor(1, 4, new Vec3(9, 1.5, 5), .1);
+    this.createFloor(2, 2, new Vec3(10, 1.5, 10), 1);
+
+    this.createAmmoPoint(-20, 0);
+    this.createAmmoPoint(20, 0);
+    this.createAmmoPoint(0, -20);
+    this.createAmmoPoint(0, 20);
+    
+    // create box
+    for(let i = -10; i < 10; i+=5) {
+      for(let j = -10; j < 10; j+=5) {
+        if( i != 0 && j != 0){
+          this.createBox(i, 2, j);
+        }
+      }
+    }
+
+    // setup player;
+    this.player = this.createPlayer();
+    this.player.add(this.audioListener);
+    
+    // setup controller
+    this.controller = new PointerLockControls(this.camera, this.player.body);
+    this.scene.add(this.controller.getObject());
+
+    // setup Bullet
+    Bullet.world = this.world;
+    Bullet.scene = this.scene;
+
+    // render animation
+    this.renderer.setAnimationLoop(this.update.bind(this));
+
+    // set ui
+    this.setupUI();
+
+  }
+
+  setupWorld(): void {
+    this.world.broadphase = new NaiveBroadphase();
+    this.world.gravity = new Vec3(0, -20, 0);
     this.world.quatNormalizeSkip = 0;
     this.world.quatNormalizeFast = false;
 
     const solver = new GSSolver();
-
     this.world.defaultContactMaterial.contactEquationStiffness = 1e9;
     this.world.defaultContactMaterial.contactEquationRelaxation = 4;
-
     solver.iterations = 7;
     solver.tolerance = 0.1;
-    
     this.world.solver = solver;
-    
     
     const material = new Material();
     const cMaterial = new ContactMaterial(
@@ -117,55 +172,16 @@ class Main {
       }
     );
     this.world.addContactMaterial(cMaterial);
-
-
-    // setup audio
-    await this.loadAudio();
-
-    // setup scene
-    this.loadAllTextures();
-    this.createLight();
-    this.createSkyBox();
-    this.createFloor();
-    this.createAmmoPoint(20, 0);
-    
-    // create box
-    for(let i = -10; i < 10; i+=5) {
-      for(let j = -10; j < 10; j+=5) {
-        if( i != 0 && j != 0){
-          this.createBox(i, 10, j);
-        }
-      }
-    }
-
-    // load weapons
-    await this.loadAllWeapons();
-
-    // setup player;
-    this.player = new Player();
-    this.player.setWeapon(this.weapons[0]);
-    if(this.shootBuffer && this.footstepBuffer && this.reloadBuffer) {
-      this.player.setFireAudio(this.shootBuffer!);
-      this.player.setFootstepAudio(this.footstepBuffer!);
-      this.player.setReloadAudio(this.reloadBuffer!);
-    }
-
-    this.scene.add(this.player);
-    this.world.addBody(this.player.body);
-
-    // setup controller
-    this.controller = new PointerLockControls(this.camera, this.player.body);
-    this.scene.add(this.controller.getObject());
-
-    Bullet.world = this.world;
-    Bullet.scene = this.scene;
-
-    this.renderer.setAnimationLoop(this.update.bind(this));
-    this.setupUI();
-
   }
 
-  private ammoPanel: HTMLElement = document.createElement('div');
+  setupRenderer(): void {
+    this.renderer.shadowMap.enabled = true;
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.setPixelRatio(devicePixelRatio);
+    this.renderer.setSize(window.innerWidth, window.innerHeight);
+    document.body.appendChild(this.canvas);
+  }
+
 
   setupUI(): void {
     this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
@@ -173,12 +189,12 @@ class Main {
     document.body.append(this.ammoPanel);
   }
 
-  updateUI(): void {
-    this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
-  }
-
   async loadAudio(): Promise<void> {
     const audioLoader = new AudioLoader();
+    
+    // music
+    this.musicBuffer = await audioLoader.loadAsync('/assets/sound/music.mp3');
+
     // Load fire audio
     this.shootBuffer = await audioLoader.loadAsync('/assets/sound/fire.wav');
 
@@ -187,20 +203,6 @@ class Main {
 
     // Load reload audio
     this.reloadBuffer = await audioLoader.loadAsync('/assets/sound/reload.mp3');
-  }
-
-  loadAllTextures(): void{
-    this.textures.push(this.textureLoader.load('assets/sky.jpg'));
-    
-    const floor = this.textureLoader.load('assets/floor.jpg');
-    floor.wrapS = floor.wrapT = RepeatWrapping;
-    floor.repeat.set(50, 50);
-    floor.magFilter = NearestFilter;
-    this.textures.push(floor);
-
-    this.textures.push(this.textureLoader.load('assets/metal.jpg'));
-    this.textures.push(this.textureLoader.load('assets/flare.png'));
-    this.textures.push(this.textureLoader.load('assets/circle.jpg'));
   }
 
   async loadAllWeapons(): Promise<void>{
@@ -215,6 +217,27 @@ class Main {
     this.weapons.push(obj);
   }
 
+  async loadAllTextures(): Promise<void>{
+    this.textures.push(await this.textureLoader.loadAsync('assets/sky.jpg'));
+    this.textures.push(await this.textureLoader.loadAsync('assets/floor.jpg'));
+    this.textures.push(await this.textureLoader.loadAsync('assets/metal.jpg'));
+    this.textures.push(await this.textureLoader.loadAsync('assets/flare.png'));
+    this.textures.push(await this.textureLoader.loadAsync('assets/circle.jpg'));
+  }
+
+  createPlayer(name?: string): Player {
+    const player = new Player(this.audioListener, name);
+    player.setWeapon(this.weapons[0].clone());
+    if(this.shootBuffer && this.footstepBuffer && this.reloadBuffer) {
+      player.setFireAudio(this.shootBuffer!);
+      player.setFootstepAudio(this.footstepBuffer!);
+      player.setReloadAudio(this.reloadBuffer!);
+    }
+    this.scene.add(player);
+    this.world.addBody(player.body);
+    return player;
+  }
+
   createAmmoPoint(x: number, z: number): void {
     const geo = new Geometry();
 
@@ -224,9 +247,9 @@ class Main {
     for(let i = 0; i < 10; i++) {
       for(let j = 0; j < 10; j++) {
         const pos = new Vector3(
-          1 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI), 
+          .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI), 
           0,
-          1 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
+          .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
           );
         const velocity = new Vector3(
           0, 
@@ -255,12 +278,19 @@ class Main {
       vel
     });
 
-    
     const ammoPoint = new Mesh();
     ammoPoint.geometry = new CircleBufferGeometry(1, 32);
     ammoPoint.material = new MeshBasicMaterial({map: this.textures[4]});
     ammoPoint.rotation.x = -Math.PI / 2;
     ammoPoint.position.set(x, -.46, z);
+
+    const audio = new PositionalAudio(this.audioListener);
+    audio.setBuffer(this.musicBuffer!);
+    audio.setRefDistance(.3);
+    audio.setLoop(true);
+    audio.play();
+    
+    ammoPoint.add(audio);
 
     this.scene.add(points);
     this.scene.add(ammoPoint);
@@ -288,18 +318,26 @@ class Main {
     this.scene.add(mesh);
   }
 
-  createFloor(): void {
+  createFloor(width: number, height: number, position: Vec3, depth: number = 1): void {
+
+    const material = new MeshPhongMaterial({shadowSide: DoubleSide});
+    material.map = this.textures[1].clone();
+    material.map.wrapS = material.map.wrapT = RepeatWrapping;
+    material.map.repeat.set(width, height);
+    material.map.magFilter = NearestFilter;
+    material.map.needsUpdate = true;
+
     const mesh = new Mesh(
-      new BoxGeometry(50, 50, 1),
-      new MeshPhongMaterial({map: this.textures[1], shadowSide: DoubleSide})
+      new BoxGeometry(width, height, depth),
+      material
     );
     mesh.setRotationFromAxisAngle(new Vector3(1,0,0), -Math.PI / 2);
     mesh.receiveShadow = true;
     
-    const shape = new Box(new Vec3(25, 25, .5));
+    const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
     const body = new Body({shape, mass: 0});
     body.quaternion.setFromAxisAngle(new Vec3(1,0,0), -Math.PI / 2);
-    body.position.y = -1;
+    body.position.copy(position)
     
     mesh.position.fromArray(body.position.toArray());
 
@@ -316,27 +354,24 @@ class Main {
     return box;
   }
 
-  keyEvent(event: KeyboardEvent) {
-    if(this.controller.enabled && event.code == Keyboard.reload) {
-      this.player.reload();
-    }
+  updateUI(): void {
+    this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
   }
-
-  resizeHandler(): void {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.camera.aspect = window.innerWidth / window.innerHeight;
-    this.camera.updateProjectionMatrix();
-  }
-
+  
   update(): void {
-    // this.camera2.lookAt(this.player.position);
     this.renderer.render(this.scene, this.camera);
     this.world.step(1/60);
 
     this.particles.forEach(particle => {
       particle.pos.forEach((pos, i) => {
         pos.add(particle.vel[i]);
-        if(pos.y > 3) pos.y = 0;
+        if(pos.y > 3) {
+          pos.copy(new Vector3(
+            .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI), 
+            0,
+            .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
+            ));
+        }
       })
       particle.geo.verticesNeedUpdate = true;
     });
@@ -353,8 +388,6 @@ class Main {
     Bullet.update(this.clock.getDelta());
     this.boxes.forEach(box => box.update());
 
-    // this.debugger.update();
-    
     this.updateUI();
 
     if(this.player.isReloading && this.player.zoom){
@@ -364,6 +397,8 @@ class Main {
       this.camera.updateProjectionMatrix();
       this.controller.lockY = false;
     }
+
+    this.player.setGround(this.controller.ground);
     
   }
 

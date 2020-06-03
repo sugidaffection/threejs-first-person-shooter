@@ -4,7 +4,7 @@ import { BoxGeometry, DoubleSide, Mesh, MeshPhongMaterial, Object3D, Texture } f
 export class Box extends Object3D {
 
   body: Body;
-  
+  isMoving: boolean = false;
   zeroVelocity: boolean = false;
 
   constructor(position: Vec3, texture: Texture, quaternion?: Quaternion, velocity?: Vec3) {
@@ -31,6 +31,9 @@ export class Box extends Object3D {
 
   update(): void {
     if(this.zeroVelocity) this.body.velocity.setZero();
+    const velocity = this.body.velocity.clone();
+          velocity.y = 0;
+    this.isMoving = velocity.almostZero(1)
     this.position.fromArray(this.body.position.toArray());
     this.quaternion.fromArray(this.body.quaternion.toArray());
   }

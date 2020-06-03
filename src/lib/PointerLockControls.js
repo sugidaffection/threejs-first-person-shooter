@@ -30,6 +30,7 @@ var PointerLockControls = function ( camera, cannonBody ) {
   var canJump = false;
 
   this.lockY = false;
+  this.ground = false;
 
   var contactNormal = new CANNON.Vec3(); // Normal in the contact, pointing *out* of whatever the player touched
   var upAxis = new CANNON.Vec3(0,1,0);
@@ -154,6 +155,7 @@ var PointerLockControls = function ( camera, cannonBody ) {
     //   delta *= 0.1;
 
     if ( scope.lockY === true ) pitchObject.rotation.x = 0;
+    scope.ground = canJump;
 
       inputVelocity.set(0,0,0);
 

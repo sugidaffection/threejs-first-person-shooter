@@ -9,6 +9,7 @@ export class Bullet extends Object3D {
 
   body: Body;
   interval: number = 3;
+  private collide: boolean = false;
 
   constructor(owner: string, position: Vec3, velocity: Vec3){
     super()
@@ -22,17 +23,29 @@ export class Bullet extends Object3D {
     Bullet.scene.add(this);
 
     const shape = new Sphere(.03);
-    this.body = new Body({shape: shape, mass: .3});
+    this.body = new Body({shape: shape, mass: .1});
     this.body.velocity = velocity;
     this.body.position.copy(position);
-    Bullet.world.addBody(this.body);
     this.position.fromArray(position.toArray());
+    Bullet.world.addBody(this.body);
+
+  }
+
+  get isCollide(): boolean {
+    return this.collide;
+  }
+
+  setCollide(value: boolean): void {
+    this.collide = value;
   }
 
   public static create(owner: string, position: Vec3, velocity: Vec3): void {
-    Bullet.bullets.push(
-      new Bullet(owner, position, velocity)
-    );
+    const bullet = new Bullet(owner, position, velocity);
+    Bullet.bullets.push(bullet);
+
+    bullet.body.addEventListener('collide', () => {
+      bullet.setCollide(true);
+    });
   }
 
   public static update(dt: number): void {
@@ -44,7 +57,8 @@ export class Bullet extends Object3D {
     for(const bullet of Bullet.bullets) {
       if(bullet.interval >= 0) {
         bullet.interval -= dt;
-      }else{
+      }
+      if(bullet.interval < 0 || bullet.isCollide ){
         Bullet.destroy(bullet);
       }
     }
