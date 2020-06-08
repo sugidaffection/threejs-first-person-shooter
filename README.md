@@ -18,8 +18,13 @@ Threejs 3d fps game
 npm install
 ```
 
-### Run script
+### Run server
 
+```
+npm run server
+```
+
+### Run game
 ```
 npm start
 ```
