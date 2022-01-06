@@ -1,6 +1,21 @@
-import { Body, Sphere, Vec3 } from 'cannon-es';
-import { AudioListener, BoxGeometry, Mesh, MeshPhongMaterial, Object3D, PositionalAudio, Vector3 } from 'three';
-import { Bullet } from './bullet';
+import {
+  Body,
+  Sphere,
+  Vec3
+} from 'cannon-es';
+import {
+  AudioListener,
+  BoxGeometry,
+  Mesh,
+  MeshPhongMaterial,
+  PositionalAudio,
+  Vector3,
+  Object3D
+} from 'three';
+import { AudioManager } from './audio';
+import {
+  Bullet
+} from './bullet';
 
 export interface PlayerJSON {
   id: string,
@@ -49,11 +64,16 @@ export class Player extends Object3D {
   constructor(audioListener: AudioListener, name?: string, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
-    if(name) this.name = name;
-    
+    this.setFireAudio(AudioManager.getAudioBuffer('fire'));
+    this.setFootstepAudio(AudioManager.getAudioBuffer('footstep'));
+    this.setReloadAudio(AudioManager.getAudioBuffer('reload'));
+    this.name = name || '';
+
     const mesh = new Mesh(
       new BoxGeometry(.5, .7, .5),
-      new MeshPhongMaterial({color: color || 0xff0000})
+      new MeshPhongMaterial({
+        color: color || 0xff0000
+      })
     );
 
     mesh.castShadow = true;
@@ -62,8 +82,12 @@ export class Player extends Object3D {
     this.add(mesh);
 
     const shape = new Sphere(.4);
-    if(body !== false){
-      this.body = new Body({shape: shape, mass: .5, linearDamping: .9});
+    if (body !== false) {
+      this.body = new Body({
+        shape: shape,
+        mass: .5,
+        linearDamping: .9
+      });
       this.position.fromArray(this.body.position.toArray());
     }
   }
@@ -129,18 +153,18 @@ export class Player extends Object3D {
     if (this.ammo > 0 && !this.isReloading) {
       const rotation = this.rotation;
       const position = new Vector3(
-        .7 * -Math.sin(rotation.y) + this.position.x, 
-        this.position.y, 
+        .7 * -Math.sin(rotation.y) + this.position.x,
+        this.position.y,
         .7 * -Math.cos(rotation.y) + this.position.z
       )
       const vel = new Vector3(
-        this.bulletSpeed * -Math.sin(rotation.y) ,
+        this.bulletSpeed * -Math.sin(rotation.y),
         0,
         this.bulletSpeed * -Math.cos(rotation.y)
       )
 
       Bullet.create(
-        this.uuid.toString(), 
+        this.uuid.toString(),
         new Vec3(
           position.x,
           position.y,
@@ -153,8 +177,8 @@ export class Player extends Object3D {
         )
       );
 
-      if(this.fireAudio){
-        if(this.fireAudio.isPlaying)
+      if (this.fireAudio) {
+        if (this.fireAudio.isPlaying)
           this.fireAudio.stop();
         this.fireAudio.play();
       }
@@ -162,25 +186,25 @@ export class Player extends Object3D {
     }
   }
 
-  zoomIn(){
-    if(this.weapon){
+  zoomIn() {
+    if (this.weapon) {
       this.weapon.position.x = .0535;
     }
   }
 
-  zoomOut(){
-    if(this.weapon)
+  zoomOut() {
+    if (this.weapon)
       this.weapon.position.x = .2;
   }
 
-  reload(){
-    if(!this.isReloading && this.ammo < this.maxAmmo && this.magazine > 0){
+  reload() {
+    if (!this.isReloading && this.ammo < this.maxAmmo && this.magazine > 0) {
       const needAmmo = this.maxAmmo - this.ammo;
       const ammo = this.magazine - needAmmo > 0 ? needAmmo : this.magazine;
       this.ammo += ammo;
       this.magazine -= ammo;
 
-      if(this.reloadAudio){
+      if (this.reloadAudio) {
         this.reloadAudio.play();
       }
       this.isReloading = true;
@@ -197,37 +221,37 @@ export class Player extends Object3D {
   update(): void {
     this.position.fromArray(this.body.position.toArray());
 
-    if(this.footstepAudio) {
+    if (this.footstepAudio) {
       const velocity = this.body.velocity.clone();
       velocity.y = 0;
-      if(!velocity.almostZero(1)){
+      if (!velocity.almostZero(1)) {
         this.walk = true;
-      }else{
+      } else {
         this.walk = false;
       }
 
-      if(this.isGrounded && this.walk && !this.footstepAudio.isPlaying){
+      if (this.isGrounded && this.walk && !this.footstepAudio.isPlaying) {
         this.footstepAudio.play();
       }
 
-      if(!this.isGrounded && this.footstepAudio.isPlaying) {
+      if (!this.isGrounded && this.footstepAudio.isPlaying) {
         this.walk = false;
         this.footstepAudio.stop();
       }
     }
 
-    if(this.reloadAudio) {
+    if (this.reloadAudio) {
       this.isReloading = this.reloadAudio.isPlaying;
     }
 
-    if(this.weapon) {
-      if(this.isReloading)
+    if (this.weapon) {
+      if (this.isReloading)
         this.weapon.rotation.x = Math.PI / 4;
-      else 
+      else
         this.weapon.rotation.x = 0;
     }
 
-    if(this.body.position.y < -20){
+    if (this.body.position.y < -20) {
       this.body.position.y = 5;
       this.body.position.x = 0;
       this.body.position.z = 0;

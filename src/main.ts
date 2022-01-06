@@ -1,33 +1,73 @@
 import { Body, Box, ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import io from 'socket.io-client';
-import { AudioListener, AudioLoader, BoxGeometry, CircleBufferGeometry, Clock, DirectionalLight, DoubleSide, Geometry, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, PositionalAudio, RepeatWrapping, Scene, Texture, TextureLoader, Vector3, WebGLRenderer } from 'three';
+import { AudioLoader, BoxGeometry, CircleBufferGeometry, BufferGeometry, Clock, DirectionalLight, DoubleSide, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, PositionalAudio, RepeatWrapping, Scene, TextureLoader, Vector3, WebGLRenderer, Float32BufferAttribute, LoadingManager, DefaultLoadingManager } from 'three';
+import { AudioListener } from 'three/src/audio/AudioListener';
 import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
 import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
 import { Box as CustomBox } from './box';
 import { Bullet } from './bullet';
-import { PointerLockControls } from './lib/PointerLockControls';
-import { Player, PlayerJSON } from './player';
+import { PointerLockControls } from './libs/PointerLockControls';
+import { Player } from './player';
+import { AudioManager } from './audio';
+import { Keyboard } from './controller';
+import { TextureManager } from './texture';
 
-enum Keyboard {
-  left = 'KeyA',
-  right = 'KeyD',
-  forward = 'KeyW',
-  backward = 'KeyS',
-  jump = 'Space',
-  reload = 'KeyR'
-}
+const [WIDTH, HEIGHT] = [800, 600];
+
+const getCanvas = document.querySelector('canvas') || (() => {
+  const canvas = document.createElement('canvas');
+  document.querySelector('main')?.append(canvas);
+  return canvas;
+})()
 
 class Main {
 
+  static getInstance(): Main {
+    if (!this.instance) this.instance = new Main();
+    return this.instance;
+  }
+
+  static async loadAudio(): Promise<void> {
+    await Promise.all(
+      [AudioManager.addAudio({ name: 'music', url: '/assets/sound/music.mp3' }),
+      AudioManager.addAudio({ name: 'fire', url: '/assets/sound/fire.wav' }),
+      AudioManager.addAudio({ name: 'footstep', url: '/assets/sound/footstep.wav' }),
+      AudioManager.addAudio({ name: 'reload', url: '/assets/sound/reload.mp3' }),
+      ]
+    )
+  }
+
+  static async loadAllWeapons(): Promise<void> {
+    // Load ump47
+    const materials = await new MTLLoader(this.loadingManager).loadAsync('/assets/ump47.mtl');
+    materials.preload();
+
+    const ump47 = await new OBJLoader(this.loadingManager).loadAsync('/assets/ump47.obj');
+    const obj: Object3D = new Object3D();
+    obj.add(ump47);
+
+    this.weapons.push(obj);
+  }
+
+  static async loadAllTextures(): Promise<void> {
+    await Promise.all([
+      TextureManager.loadTexture({ name: 'sky', url: 'assets/sky.jpg' }),
+      TextureManager.loadTexture({ name: 'floor', url: 'assets/floor.jpg' }),
+      TextureManager.loadTexture({ name: 'metal', url: 'assets/metal.jpg' }),
+      TextureManager.loadTexture({ name: 'flare', url: 'assets/flare.png' }),
+      TextureManager.loadTexture({ name: 'circle', url: 'assets/circle.jpg' }),
+    ])
+  }
+
+  private static instance: Main;
+  private static loadingManager: LoadingManager = new LoadingManager();
+  private static readonly weapons: Object3D[] = [];
+
   private readonly world: World = new World()
   private readonly scene: Scene = new Scene();
-  private readonly renderer: WebGLRenderer = new WebGLRenderer({antialias: false});
-  private readonly camera: PerspectiveCamera = new PerspectiveCamera(75, window.innerWidth / window.innerHeight, .1, 1000);
-  private readonly canvas: HTMLElement = this.renderer.domElement;
+  private readonly canvas: HTMLElement = getCanvas;
+  private readonly renderer: WebGLRenderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
+  private readonly camera: PerspectiveCamera = new PerspectiveCamera(75, WIDTH / HEIGHT, .1, 1000);
   private readonly clock: Clock = new Clock();
-  private readonly textureLoader: TextureLoader = new TextureLoader();
-  private readonly textures: Texture[] = [];
-  private readonly weapons: Object3D[] = [];
 
   private readonly audioListener: AudioListener = new AudioListener();
 
@@ -35,141 +75,48 @@ class Main {
   private connectionPanel: HTMLElement = document.createElement('div');
   private statusPanel: HTMLElement = document.createElement('ul');
 
-  private footstepBuffer = null;
-  private shootBuffer = null;
-  private reloadBuffer = null;
-  private musicBuffer = null;
-
   private ammoPoints: Mesh[] = [];
-  private particles: {geo: Geometry, pos: Vector3[], vel: Vector3[]}[] = [];
+  private particles: { geo: BufferGeometry, pos: number[], vel: Vector3[] }[] = [];
 
   private player!: Player;
   private controller: any;
-  
+
   private boxes: CustomBox[] = [];
-  
+
   private players: Player[] = [];
 
-  private socket: SocketIOClient.Socket = io('http://localhost:3000');
 
   constructor() {
     addEventListener('resize', this.resizeHandler.bind(this));
-    addEventListener('click', async () => this.canvas.requestPointerLock());
-    document.addEventListener('pointerlockchange', () => this.controller.enabled = document.pointerLockElement == this.canvas);
+    this.canvas.addEventListener('click', async () => {
+      await this.canvas.requestFullscreen();
+      this.canvas.requestPointerLock();
+    });
+    document.addEventListener('pointerlockchange', () => {
+      if (this.controller && this.player)
+        this.controller.enabled = document.pointerLockElement == this.canvas
+    });
     addEventListener('mousedown', this.mouseEvent.bind(this));
     addEventListener('keydown', this.keyEvent.bind(this));
     addEventListener('keyup', this.keyEvent.bind(this));
-    
-    const setup = this.setup();
 
-    this.socket.on('connect', async () => {
-
-      await setup;
-      console.log('connected');
-
-      this.player.name = this.socket.id;
-      this.socket.emit('join', this.player);
-      
-      this.socket.on('message::disconnect', (message) => {
-        console.log('message');
-        const li = document.createElement('li');
-        li.innerText = message;
-        li.className = 'warning'
-        this.statusPanel.append(li);
-        li.scrollIntoView();
-      });
-
-      this.socket.on('message::connect', (message) => {
-        console.log('message');
-        const li = document.createElement('li');
-        li.innerText = message;
-        li.className = 'info'
-        this.statusPanel.append(li);
-        li.scrollIntoView();
-      });
-
-      this.socket.on('player::all', (result: PlayerJSON[]) => {
-        result.forEach(data => {
-          let player = this.players.find(p => p.name == data.id);
-          if(!player){
-            player = this.createPlayer(data.id);
-            player.updateFromJSON(data);
-            this.players.push(player);
-          }
-        })
-      });
-      
-      this.socket.on('player::joined', (data: PlayerJSON) => {
-        let player = this.players.find(p => p.name == data.id);
-        if(!player){
-          player = this.createPlayer(data.id);
-          player.updateFromJSON(data);
-          this.players.push(player);
-        }
-      });
-
-      this.socket.on('player::update', (data: PlayerJSON) => {
-        let player = this.players.find(p => p.name == data.id);
-        if(player && player.name != this.player.name){
-          player.updateFromJSON(data);
-        }
-      });
-
-      this.socket.on('player::count', (count) => {
-        this.connectionPanel.innerText = `online : ${count}`;
-      });
-
-      this.socket.on('player::leave', (data: { id: string }) => {
-        let player = this.players.find(p => p.name == data.id);
-        if(player){
-          this.world.removeBody(player.body);
-          this.scene.remove(player);
-          
-          const idx = this.players.indexOf(player);
-          this.players.splice(idx, 1);
-        }
-      })
-
-      this.socket.on('player::shoot', (data: PlayerJSON) => {
-        let player = this.players.find(p => p.name == data.id);
-        if(player && player.name != this.player.name){
-          player.fire();
-        }
-      })
-
-      this.socket.on('player::reload', (data: PlayerJSON) => {
-        let player = this.players.find(p => p.name == data.id);
-        if(player && player.name != this.player.name){
-          player.reload();
-        }
-      })
-    })
-
-    this.socket.on('disconnect', () => {
-      const li = document.createElement('li');
-      li.innerText = 'disconnected from the game.';
-      li.className = 'warning'
-      this.statusPanel.append(li);
-      li.scrollIntoView();
-    })
+    this.setup();
   }
 
   private keyEvent(event: KeyboardEvent): void {
-    if(this.controller.enabled && event.code == Keyboard.reload) {
+    if (this.controller.enabled && event.code == Keyboard.RELOAD) {
       this.player.reload();
-      this.socket.emit('reload', this.player);
     }
   }
 
   private mouseEvent(event: MouseEvent): void {
     if (event.button == 0 && this.controller.enabled) {
       this.player.fire();
-      this.socket.emit('fire', this.player);
     }
-    
-    if(event.button == 2 && this.controller.enabled && !this.player.isReloading) {
+
+    if (event.button == 2 && this.controller.enabled && !this.player.isReloading) {
       this.player.zoom = !this.player.zoom;
-      if(this.player.zoom) {
+      if (this.player.zoom) {
         this.player.zoomIn();
         this.camera.zoom = 5;
         this.camera.updateProjectionMatrix();
@@ -185,17 +132,15 @@ class Main {
   }
 
   private resizeHandler(): void {
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    this.camera.aspect = window.innerWidth / window.innerHeight;
+    const [width, height] = [WIDTH, HEIGHT];
+    this.renderer.setSize(width, height);
+    let aspectRatio = width / height;
+    if (height > width) aspectRatio = height / width;
+    this.camera.aspect = aspectRatio;
     this.camera.updateProjectionMatrix();
   }
 
   async setup(): Promise<void> {
-
-    // load assets
-    await this.loadAudio();
-    await this.loadAllWeapons();
-    await this.loadAllTextures();
 
     // setup world
     this.setupWorld();
@@ -219,11 +164,11 @@ class Main {
     this.createAmmoPoint(20, 0);
     this.createAmmoPoint(0, -20);
     this.createAmmoPoint(0, 20);
-    
+
     // create box
-    for(let i = -10; i < 10; i+=5) {
-      for(let j = -10; j < 10; j+=5) {
-        if( i != 0 && j != 0){
+    for (let i = -10; i < 10; i += 5) {
+      for (let j = -10; j < 10; j += 5) {
+        if (i != 0 && j != 0) {
           this.createBox(i, 2, j);
         }
       }
@@ -232,7 +177,7 @@ class Main {
     // setup player;
     this.player = this.createPlayer();
     this.player.add(this.audioListener);
-    
+
     // setup controller
     this.controller = new PointerLockControls(this.camera, this.player.body);
     this.scene.add(this.controller.getObject());
@@ -261,7 +206,7 @@ class Main {
     solver.iterations = 7;
     solver.tolerance = 0.1;
     this.world.solver = solver;
-    
+
     const material = new Material();
     const cMaterial = new ContactMaterial(
       material,
@@ -278,8 +223,7 @@ class Main {
     this.renderer.shadowMap.enabled = true;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.setPixelRatio(devicePixelRatio);
-    this.renderer.setSize(window.innerWidth, window.innerHeight);
-    document.body.appendChild(this.canvas);
+    this.renderer.setSize(WIDTH, HEIGHT);
   }
 
   setupUI(): void {
@@ -292,97 +236,56 @@ class Main {
     this.statusPanel.className = 'panel statusPanel';
 
     const panel = document.getElementById('panelUI');
-    if(panel) {
+    if (panel) {
       panel.append(this.ammoPanel);
       panel.append(this.connectionPanel);
       panel.append(this.statusPanel);
     }
   }
 
-  async loadAudio(): Promise<void> {
-    const audioLoader = new AudioLoader();
-    
-    // music
-    this.musicBuffer = await audioLoader.loadAsync('/assets/sound/music.mp3');
-
-    // Load fire audio
-    this.shootBuffer = await audioLoader.loadAsync('/assets/sound/fire.wav');
-
-    // Load footstep audio
-    this.footstepBuffer = await audioLoader.loadAsync('/assets/sound/footstep.wav');
-
-    // Load reload audio
-    this.reloadBuffer = await audioLoader.loadAsync('/assets/sound/reload.mp3');
-  }
-
-  async loadAllWeapons(): Promise<void>{
-    // Load ump47
-    const materials = await new MTLLoader().loadAsync('/assets/ump47.mtl');
-    materials.preload();
-
-    const ump47 = await new OBJLoader().loadAsync('/assets/ump47.obj');
-    const obj: Object3D = new Object3D();
-    obj.add(ump47);
-
-    this.weapons.push(obj);
-  }
-
-  async loadAllTextures(): Promise<void>{
-    this.textures.push(await this.textureLoader.loadAsync('assets/sky.jpg'));
-    this.textures.push(await this.textureLoader.loadAsync('assets/floor.jpg'));
-    this.textures.push(await this.textureLoader.loadAsync('assets/metal.jpg'));
-    this.textures.push(await this.textureLoader.loadAsync('assets/flare.png'));
-    this.textures.push(await this.textureLoader.loadAsync('assets/circle.jpg'));
-  }
-
   createPlayer(name?: string, body?: boolean): Player {
     const player = new Player(this.audioListener, name, '#fff', body);
-    player.setWeapon(this.weapons[0].clone());
-    if(this.shootBuffer && this.footstepBuffer && this.reloadBuffer) {
-      player.setFireAudio(this.shootBuffer!);
-      player.setFootstepAudio(this.footstepBuffer!);
-      player.setReloadAudio(this.reloadBuffer!);
-    }
+    player.setWeapon(Main.weapons[0].clone());
     this.scene.add(player);
-    if(body !== false)
+    if (body !== false)
       this.world.addBody(player.body);
     return player;
   }
 
   createAmmoPoint(x: number, z: number): void {
-    const geo = new Geometry();
+    const geo = new BufferGeometry();
 
-    const positions: Vector3[] = []
+    const positions: number[] = []
     const vel: Vector3[] = []
 
-    for(let i = 0; i < 10; i++) {
-      for(let j = 0; j < 10; j++) {
-        const pos = new Vector3(
-          .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI), 
-          0,
-          .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
-          );
+    for (let i = 0; i < 10; i++) {
+      for (let j = 0; j < 10; j++) {
+        const x = .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI);
+        const y = 0;
+        const z = .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI);
         const velocity = new Vector3(
-          0, 
+          0,
           Math.random() * .1,
           0
         );
-        geo.vertices.push(pos);
-        positions.push(pos);
+        // geo.vertices.push(pos);
+        positions.push(x, y, z);
         vel.push(velocity);
       }
     }
 
+    geo.setAttribute('position', new Float32BufferAttribute(positions, 3));
+
     const mat = new PointsMaterial({
-      size: .1, 
-      map: this.textures[3], 
+      size: .1,
+      map: TextureManager.getTexture('flare'),
       transparent: true,
       depthTest: false,
       alphaTest: .1
     });
-    
+
     const points = new Points(geo, mat);
-    points.position.set(x,-.45,z);
+    points.position.set(x, -.45, z);
     this.particles.push({
       geo,
       pos: positions,
@@ -391,16 +294,16 @@ class Main {
 
     const ammoPoint = new Mesh();
     ammoPoint.geometry = new CircleBufferGeometry(1, 32);
-    ammoPoint.material = new MeshBasicMaterial({map: this.textures[4]});
+    ammoPoint.material = new MeshBasicMaterial({ map: TextureManager.getTexture('circle') });
     ammoPoint.rotation.x = -Math.PI / 2;
     ammoPoint.position.set(x, -.46, z);
 
     const audio = new PositionalAudio(this.audioListener);
     audio.name = "music";
-    audio.setBuffer(this.musicBuffer!);
+    audio.setBuffer(AudioManager.getAudioBuffer('music'));
     audio.setRefDistance(.3);
     audio.setLoop(true);
-    
+
     ammoPoint.add(audio);
 
     this.scene.add(points);
@@ -408,7 +311,7 @@ class Main {
     this.ammoPoints.push(ammoPoint);
   }
 
-  createLight(): void{
+  createLight(): void {
 
     const hemisphereLight = new HemisphereLight();
     hemisphereLight.position.set(0, 50, 0);
@@ -421,18 +324,18 @@ class Main {
     this.scene.add(directionalLight);
   }
 
-  createSkyBox(): void{
+  createSkyBox(): void {
     const mesh = new Mesh(
       new BoxGeometry(1000, 1000, 1000),
-      new MeshBasicMaterial({map: this.textures[0], side: DoubleSide})
+      new MeshBasicMaterial({ map: TextureManager.getTexture('sky'), side: DoubleSide })
     );
     this.scene.add(mesh);
   }
 
   createFloor(width: number, height: number, position: Vec3, depth: number = 1): void {
 
-    const material = new MeshPhongMaterial({shadowSide: DoubleSide});
-    material.map = this.textures[1].clone();
+    const material = new MeshPhongMaterial({ shadowSide: DoubleSide });
+    material.map = TextureManager.getTexture('floor');
     material.map.wrapS = material.map.wrapT = RepeatWrapping;
     material.map.repeat.set(width, height);
     material.map.magFilter = NearestFilter;
@@ -442,14 +345,14 @@ class Main {
       new BoxGeometry(width, height, depth),
       material
     );
-    mesh.setRotationFromAxisAngle(new Vector3(1,0,0), -Math.PI / 2);
+    mesh.setRotationFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
     mesh.receiveShadow = true;
-    
+
     const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
-    const body = new Body({shape, mass: 0});
-    body.quaternion.setFromAxisAngle(new Vec3(1,0,0), -Math.PI / 2);
+    const body = new Body({ shape, mass: 0 });
+    body.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
     body.position.copy(position)
-    
+
     mesh.position.fromArray(body.position.toArray());
 
     this.world.addBody(body);
@@ -457,7 +360,7 @@ class Main {
   }
 
   createBox(x: number, y: number, z: number): CustomBox {
-    const box = new CustomBox(new Vec3(x, y, z), this.textures[2]);
+    const box = new CustomBox(new Vec3(x, y, z), TextureManager.getTexture('metal'));
     this.boxes.push(box);
     this.world.addBody(box.body);
     this.scene.add(box);
@@ -468,38 +371,38 @@ class Main {
   updateUI(): void {
     this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
   }
-  
+
   update(): void {
     this.renderer.render(this.scene, this.camera);
-    this.world.step(1/60);
+    this.world.step(1 / 60);
 
-    this.particles.forEach(particle => {
-      particle.pos.forEach((pos, i) => {
-        pos.add(particle.vel[i]);
-        if(pos.y > 3) {
-          pos.copy(new Vector3(
-            .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI), 
-            0,
-            .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
-            ));
-        }
-      })
-      particle.geo.verticesNeedUpdate = true;
-    });
+    // this.particles.forEach(particle => {
+    //   particle.pos.forEach((pos, i) => {
+    //     pos.add(particle.vel[i]);
+    //     if (pos.y > 3) {
+    //       pos.copy(new Vector3(
+    //         .75 * Math.sqrt(Math.random()) * Math.sin(Math.random() * 2 * Math.PI),
+    //         0,
+    //         .75 * Math.sqrt(Math.random()) * Math.cos(Math.random() * 2 * Math.PI)
+    //       ));
+    //     }
+    //   })
+    //   // particle.geo.verticesNeedUpdate = true;
+    // });
     this.ammoPoints.forEach(p => {
-      if(this.player.position.distanceTo(p.position) < 1) {
+      if (this.player.position.distanceTo(p.position) < 1) {
         this.player.fillMagazine();
       }
       const audio: any = p.getObjectByName('music');
 
-      if(audio && !audio.isPlaying){
+      if (audio && !audio.isPlaying) {
         audio.play();
       }
     })
 
     this.player.update();
     this.players.forEach(player => player.update());
-    this.controller.update(1/60);
+    this.controller.update(1 / 60);
     this.player.rotation.y = this.controller.getObject().rotation.y;
 
     Bullet.update(this.clock.getDelta());
@@ -507,7 +410,7 @@ class Main {
 
     this.updateUI();
 
-    if(this.player.isReloading && this.player.zoom){
+    if (this.player.isReloading && this.player.zoom) {
       this.player.zoomOut();
       this.player.zoom = false;
       this.camera.zoom = 1;
@@ -516,13 +419,49 @@ class Main {
     }
 
     this.player.setGround(this.controller.ground);
-    
-    this.socket.emit('update', this.player);
+
+    // this.socket.emit('update', this.player);
   }
 
-  public static main() {
-    new Main();
+  public static async main() {
+    const canvas = document.querySelector('canvas');
+    canvas!.style.display = 'none';
+
+    AudioManager.setLoadingManager(this.loadingManager);
+    TextureManager.setLoadingManager(this.loadingManager);
+
+    let progress = 0;
+    const loading: HTMLElement = document.querySelector('.loading')!;
+    const bar: HTMLElement = document.querySelector('.loading-bar')!;
+
+    this.loadingManager.onProgress = (url, loaded: number, total: number) => {
+      progress = loaded / total * 100;
+      console.log(progress);
+      bar?.setAttribute('style', 'width: ' + progress + '%');
+      loading?.setAttribute('value', String((progress).toFixed()));
+    }
+
+    this.loadingManager.onLoad = () => {
+      if (progress >= 100) {
+        loading.style.display = 'none';
+        canvas?.removeAttribute('style');
+        setTimeout(() => {
+          this.getInstance();
+
+        }, 1000)
+      }
+
+    }
+    // load assets
+    await Promise.all(
+      [
+        this.loadAudio(),
+        this.loadAllWeapons(),
+        this.loadAllTextures(),
+      ]
+    )
+
   }
 }
 
-window.onload = () => Main.main()
+export { Main };
