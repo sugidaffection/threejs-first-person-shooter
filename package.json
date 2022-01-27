@@ -21,7 +21,7 @@
     "express": "^4.17.1",
     "socket.io": "^2.3.0",
     "socket.io-client": "^2.3.0",
-    "three": "^0.136.0"
+    "three": "^0.137.0"
   },
   "devDependencies": {
     "@types/three": "^0.136.1",
