@@ -2,12 +2,12 @@ import io from 'socket.io-client';
 
 class Network {
 
-    private static socket: SocketIOClient.Socket;
+    // private static socket: SocketIOClient.Socket;
 
     static connect() {
-        if (!this.socket) {
-            this.socket = io('http://localhost:3000');
-        }
+        // if (!this.socket) {
+        // this.socket = io('http://localhost:3000');
+        // }
     }
 
     static onListening() {

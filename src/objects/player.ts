@@ -12,7 +12,7 @@ import {
   Vector3,
   Object3D
 } from 'three';
-import { AudioManager } from './audio';
+import { AudioManager } from '../manager/AudioManager';
 import {
   Bullet
 } from './bullet';

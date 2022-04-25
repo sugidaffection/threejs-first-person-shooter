@@ -4,7 +4,7 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 module.exports = {
-  mode: 'production',
+  mode: 'development',
   entry: './src/index',
 
   output: {
@@ -17,7 +17,7 @@ module.exports = {
   },
   devtool: false,
   optimization: {
-    minimize: true
+    minimize: false
   },
   performance: {
     hints: false
@@ -36,6 +36,7 @@ module.exports = {
       }
     ]
   },
+  watch: false,
   watchOptions: {
     ignored: /node_modules/
   },
@@ -52,17 +53,15 @@ module.exports = {
   ],
   devServer: {
     hot: true,
-    static: [{
-      directory: path.resolve(__dirname, './public'),
-      publicPath: '/'
-    },
-    {
-      directory: path.resolve(__dirname, './dist'),
-      publicPath: '/dist'
-    },
-    {
-      directory: path.resolve(__dirname, './assets'),
-      publicPath: '/assets'
-    }]
+    compress: false,
+    static: [
+      {
+        directory: path.resolve(__dirname, './public')
+      },
+      {
+        directory: path.resolve(__dirname, './assets'),
+        publicPath: '/assets'
+      }
+    ]
   }
 }

@@ -1,17 +1,20 @@
 import { Body, Box, ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
 import { AudioLoader, BoxGeometry, CircleBufferGeometry, BufferGeometry, Clock, DirectionalLight, DoubleSide, HemisphereLight, Mesh, MeshBasicMaterial, MeshPhongMaterial, NearestFilter, Object3D, PCFSoftShadowMap, PerspectiveCamera, Points, PointsMaterial, PositionalAudio, RepeatWrapping, Scene, TextureLoader, Vector3, WebGLRenderer, Float32BufferAttribute, LoadingManager, DefaultLoadingManager } from 'three';
 import { AudioListener } from 'three/src/audio/AudioListener';
-import { MTLLoader } from 'three/examples/jsm/loaders/MTLLoader';
-import { OBJLoader } from 'three/examples/jsm/loaders/OBJLoader';
-import { Box as CustomBox } from './box';
-import { Bullet } from './bullet';
+import { Box as CustomBox } from './objects/box';
+import { Bullet } from './objects/bullet';
 import { PointerLockControls } from './libs/PointerLockControls';
-import { Player } from './player';
-import { AudioManager } from './audio';
-import { Keyboard } from './controller';
-import { TextureManager } from './texture';
+import { Player } from './objects/player';
+import { AudioManager } from './manager/AudioManager';
+import { TextureManager } from './manager/TextureManager';
+import { Controller } from './inputs/Controller';
+import { GameEvent } from './events/GameEvent';
+import { AssetManager } from './manager/AssetManager';
+import { WeaponManager } from './manager/WeaponManager';
+import { GameScene } from './scenes/GameScene';
+import { LoadingScene } from './scenes/LoadingScene';
 
-const [WIDTH, HEIGHT] = [800, 600];
+const [WIDTH, HEIGHT] = [640, 480];
 
 const getCanvas = document.querySelector('canvas') || (() => {
   const canvas = document.createElement('canvas');
@@ -19,61 +22,24 @@ const getCanvas = document.querySelector('canvas') || (() => {
   return canvas;
 })()
 
-class Main {
+class Main extends GameEvent {
 
   static getInstance(): Main {
     if (!this.instance) this.instance = new Main();
     return this.instance;
   }
 
-  static async loadAudio(): Promise<void> {
-    await Promise.all(
-      [AudioManager.addAudio({ name: 'music', url: '/assets/sound/music.mp3' }),
-      AudioManager.addAudio({ name: 'fire', url: '/assets/sound/fire.wav' }),
-      AudioManager.addAudio({ name: 'footstep', url: '/assets/sound/footstep.wav' }),
-      AudioManager.addAudio({ name: 'reload', url: '/assets/sound/reload.mp3' }),
-      ]
-    )
-  }
-
-  static async loadAllWeapons(): Promise<void> {
-    // Load ump47
-    const materials = await new MTLLoader(this.loadingManager).loadAsync('/assets/ump47.mtl');
-    materials.preload();
-
-    const ump47 = await new OBJLoader(this.loadingManager).loadAsync('/assets/ump47.obj');
-    const obj: Object3D = new Object3D();
-    obj.add(ump47);
-
-    this.weapons.push(obj);
-  }
-
-  static async loadAllTextures(): Promise<void> {
-    await Promise.all([
-      TextureManager.loadTexture({ name: 'sky', url: 'assets/sky.jpg' }),
-      TextureManager.loadTexture({ name: 'floor', url: 'assets/floor.jpg' }),
-      TextureManager.loadTexture({ name: 'metal', url: 'assets/metal.jpg' }),
-      TextureManager.loadTexture({ name: 'flare', url: 'assets/flare.png' }),
-      TextureManager.loadTexture({ name: 'circle', url: 'assets/circle.jpg' }),
-    ])
-  }
-
   private static instance: Main;
-  private static loadingManager: LoadingManager = new LoadingManager();
-  private static readonly weapons: Object3D[] = [];
-
+  private static isLoaded: boolean = false;
   private readonly world: World = new World()
-  private readonly scene: Scene = new Scene();
   private readonly canvas: HTMLElement = getCanvas;
   private readonly renderer: WebGLRenderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
   private readonly camera: PerspectiveCamera = new PerspectiveCamera(75, WIDTH / HEIGHT, .1, 1000);
+  // private readonly gameScene: GameScene = new GameScene();
+  private readonly loadingScene: LoadingScene = new LoadingScene();
   private readonly clock: Clock = new Clock();
 
   private readonly audioListener: AudioListener = new AudioListener();
-
-  private ammoPanel: HTMLElement = document.createElement('div');
-  private connectionPanel: HTMLElement = document.createElement('div');
-  private statusPanel: HTMLElement = document.createElement('ul');
 
   private ammoPoints: Mesh[] = [];
   private particles: { geo: BufferGeometry, pos: number[], vel: Vector3[] }[] = [];
@@ -87,25 +53,32 @@ class Main {
 
 
   constructor() {
-    addEventListener('resize', this.resizeHandler.bind(this));
-    this.canvas.addEventListener('click', async () => {
-      await this.canvas.requestFullscreen();
-      this.canvas.requestPointerLock();
-    });
-    document.addEventListener('pointerlockchange', () => {
-      if (this.controller && this.player)
-        this.controller.enabled = document.pointerLockElement == this.canvas
-    });
-    addEventListener('mousedown', this.mouseEvent.bind(this));
-    addEventListener('keydown', this.keyEvent.bind(this));
-    addEventListener('keyup', this.keyEvent.bind(this));
+    super();
+    // addEventListener('resize', this.resizeHandler.bind(this));
+    // this.canvas.addEventListener('click', async () => {
+    //   await this.canvas.requestFullscreen();
+    //   this.canvas.requestPointerLock();
+    // });
+    // document.addEventListener('pointerlockchange', () => {
+    //   if (this.controller && this.player)
+    //     this.controller.enabled = document.pointerLockElement == this.canvas
+    // });
+    // addEventListener('mousedown', this.mouseEvent.bind(this));
+    // addEventListener('keydown', this.keyEvent.bind(this));
+    // addEventListener('keyup', this.keyEvent.bind(this));
 
     this.setup();
+
+    console.log('setup');
+
+    // console.log(this.renderer.info.render.triangles)
   }
 
-  private keyEvent(event: KeyboardEvent): void {
-    if (this.controller.enabled && event.code == Keyboard.RELOAD) {
-      this.player.reload();
+  inputEvent(e: KeyboardEvent | MouseEvent): void {
+    super.inputEvent(e);
+    if (this.controller.enabled) {
+      if (Controller.RELOAD) this.player.reload();
+      if (Controller.FIRE) this.player.fire();
     }
   }
 
@@ -143,55 +116,26 @@ class Main {
   async setup(): Promise<void> {
 
     // setup world
-    this.setupWorld();
+    // this.setupWorld();
 
     // setup renderer
     this.setupRenderer();
 
-    // setup scene
-    this.createLight();
-    this.createSkyBox();
-
-    this.createFloor(50, 50, new Vec3(0, -1, 0));
-    this.createFloor(1, 1, new Vec3(3, 0, 3), .1);
-    this.createFloor(1, 1, new Vec3(5, .5, 3), .1);
-    this.createFloor(1, 1, new Vec3(7, 1, 3), .1);
-    this.createFloor(1, 1, new Vec3(9, 1.5, 3), .1);
-    this.createFloor(1, 4, new Vec3(9, 1.5, 5), .1);
-    this.createFloor(2, 2, new Vec3(10, 1.5, 10), 1);
-
-    this.createAmmoPoint(-20, 0);
-    this.createAmmoPoint(20, 0);
-    this.createAmmoPoint(0, -20);
-    this.createAmmoPoint(0, 20);
-
-    // create box
-    for (let i = -10; i < 10; i += 5) {
-      for (let j = -10; j < 10; j += 5) {
-        if (i != 0 && j != 0) {
-          this.createBox(i, 2, j);
-        }
-      }
-    }
-
     // setup player;
-    this.player = this.createPlayer();
-    this.player.add(this.audioListener);
+    // this.player = this.createPlayer();
+    // this.player.add(this.audioListener);
 
     // setup controller
-    this.controller = new PointerLockControls(this.camera, this.player.body);
-    this.scene.add(this.controller.getObject());
+    // this.controller = new PointerLockControls(this.camera, this.player.body);
+    // this.scene.add(this.controller.getObject());
 
     // setup Bullet
-    Bullet.world = this.world;
-    Bullet.scene = this.scene;
+    // Bullet.world = this.world;
+    // Bullet.scene = this.scene;
 
     // render animation
+    this.renderer.render(this.loadingScene, this.camera);
     this.renderer.setAnimationLoop(this.update.bind(this));
-
-    // set ui
-    this.setupUI();
-
   }
 
   setupWorld(): void {
@@ -220,33 +164,17 @@ class Main {
   }
 
   setupRenderer(): void {
-    this.renderer.shadowMap.enabled = true;
+    this.renderer.setClearColor(0xffffff);
+    this.renderer.shadowMap.enabled = false;
     this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.setPixelRatio(devicePixelRatio);
     this.renderer.setSize(WIDTH, HEIGHT);
-  }
-
-  setupUI(): void {
-    this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
-    this.ammoPanel.className = 'panel ammoPanel';
-
-    this.connectionPanel.innerText = 'online : 1';
-    this.connectionPanel.className = 'panel connectionPanel';
-
-    this.statusPanel.className = 'panel statusPanel';
-
-    const panel = document.getElementById('panelUI');
-    if (panel) {
-      panel.append(this.ammoPanel);
-      panel.append(this.connectionPanel);
-      panel.append(this.statusPanel);
-    }
+    this.renderer.setPixelRatio(window.devicePixelRatio * .8);
   }
 
   createPlayer(name?: string, body?: boolean): Player {
     const player = new Player(this.audioListener, name, '#fff', body);
-    player.setWeapon(Main.weapons[0].clone());
-    this.scene.add(player);
+    player.setWeapon(WeaponManager.cloneWeapon('ump47'));
+    // this.scene.add(player);
     if (body !== false)
       this.world.addBody(player.body);
     return player;
@@ -306,75 +234,17 @@ class Main {
 
     ammoPoint.add(audio);
 
-    this.scene.add(points);
-    this.scene.add(ammoPoint);
+    // this.scene.add(points);
+    // this.scene.add(ammoPoint);
     this.ammoPoints.push(ammoPoint);
   }
 
-  createLight(): void {
-
-    const hemisphereLight = new HemisphereLight();
-    hemisphereLight.position.set(0, 50, 0);
-    hemisphereLight.intensity = .2;
-    this.scene.add(hemisphereLight);
-
-    const directionalLight = new DirectionalLight();
-    directionalLight.position.set(50, 50, 50);
-    directionalLight.castShadow = true;
-    this.scene.add(directionalLight);
-  }
-
-  createSkyBox(): void {
-    const mesh = new Mesh(
-      new BoxGeometry(1000, 1000, 1000),
-      new MeshBasicMaterial({ map: TextureManager.getTexture('sky'), side: DoubleSide })
-    );
-    this.scene.add(mesh);
-  }
-
-  createFloor(width: number, height: number, position: Vec3, depth: number = 1): void {
-
-    const material = new MeshPhongMaterial({ shadowSide: DoubleSide });
-    material.map = TextureManager.getTexture('floor');
-    material.map.wrapS = material.map.wrapT = RepeatWrapping;
-    material.map.repeat.set(width, height);
-    material.map.magFilter = NearestFilter;
-    material.map.needsUpdate = true;
-
-    const mesh = new Mesh(
-      new BoxGeometry(width, height, depth),
-      material
-    );
-    mesh.setRotationFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
-    mesh.receiveShadow = true;
-
-    const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
-    const body = new Body({ shape, mass: 0 });
-    body.quaternion.setFromAxisAngle(new Vec3(1, 0, 0), -Math.PI / 2);
-    body.position.copy(position)
-
-    mesh.position.fromArray(body.position.toArray());
-
-    this.world.addBody(body);
-    this.scene.add(mesh);
-  }
-
-  createBox(x: number, y: number, z: number): CustomBox {
-    const box = new CustomBox(new Vec3(x, y, z), TextureManager.getTexture('metal'));
-    this.boxes.push(box);
-    this.world.addBody(box.body);
-    this.scene.add(box);
-
-    return box;
-  }
-
-  updateUI(): void {
-    this.ammoPanel.innerText = `Ammo : ${this.player.getAmmo()} / ${this.player.getMagazine()}`;
-  }
-
   update(): void {
-    this.renderer.render(this.scene, this.camera);
-    this.world.step(1 / 60);
+    this.loadingScene.update();
+    // console.log('render');
+    this.renderer.render(this.loadingScene, this.camera);
+    // this.renderer.render(this.scene, this.camera);
+    // this.world.step(1 / 60);
 
     // this.particles.forEach(particle => {
     //   particle.pos.forEach((pos, i) => {
@@ -389,78 +259,70 @@ class Main {
     //   })
     //   // particle.geo.verticesNeedUpdate = true;
     // });
-    this.ammoPoints.forEach(p => {
-      if (this.player.position.distanceTo(p.position) < 1) {
-        this.player.fillMagazine();
-      }
-      const audio: any = p.getObjectByName('music');
+    // this.ammoPoints.forEach(p => {
+    //   if (this.player.position.distanceTo(p.position) < 1) {
+    //     this.player.fillMagazine();
+    //   }
+    //   const audio: any = p.getObjectByName('music');
 
-      if (audio && !audio.isPlaying) {
-        audio.play();
-      }
-    })
+    //   if (audio && !audio.isPlaying) {
+    //     audio.play();
+    //   }
+    // })
 
-    this.player.update();
-    this.players.forEach(player => player.update());
-    this.controller.update(1 / 60);
-    this.player.rotation.y = this.controller.getObject().rotation.y;
+    // this.player.update();
+    // this.players.forEach(player => player.update());
+    // this.controller.update(1 / 60);
+    // this.player.rotation.y = this.controller.getObject().rotation.y;
 
-    Bullet.update(this.clock.getDelta());
-    this.boxes.forEach(box => box.update());
+    // Bullet.update(this.clock.getDelta());
+    // this.boxes.forEach(box => box.update());
 
-    this.updateUI();
 
-    if (this.player.isReloading && this.player.zoom) {
-      this.player.zoomOut();
-      this.player.zoom = false;
-      this.camera.zoom = 1;
-      this.camera.updateProjectionMatrix();
-      this.controller.lockY = false;
-    }
+    // if (this.player.isReloading && this.player.zoom) {
+    //   this.player.zoomOut();
+    //   this.player.zoom = false;
+    //   this.camera.zoom = 1;
+    //   this.camera.updateProjectionMatrix();
+    //   this.controller.lockY = false;
+    // }
 
-    this.player.setGround(this.controller.ground);
+    // this.player.setGround(this.controller.ground);
 
     // this.socket.emit('update', this.player);
   }
 
   public static async main() {
-    const canvas = document.querySelector('canvas');
-    canvas!.style.display = 'none';
+    // const canvas = document.querySelector('canvas');
+    // canvas!.style.display = 'none';
 
-    AudioManager.setLoadingManager(this.loadingManager);
-    TextureManager.setLoadingManager(this.loadingManager);
+    // let progress = 0;
+    // const loading: HTMLElement = document.querySelector('.loading')!;
+    // const bar: HTMLElement = document.querySelector('.loading-bar')!;
 
-    let progress = 0;
-    const loading: HTMLElement = document.querySelector('.loading')!;
-    const bar: HTMLElement = document.querySelector('.loading-bar')!;
+    this.getInstance();
 
-    this.loadingManager.onProgress = (url, loaded: number, total: number) => {
-      progress = loaded / total * 100;
-      console.log(progress);
-      bar?.setAttribute('style', 'width: ' + progress + '%');
-      loading?.setAttribute('value', String((progress).toFixed()));
+
+    AssetManager.manager.onProgress = (url, loaded: number, total: number) => {
+      // progress = loaded / total * 100;
+      // bar?.setAttribute('style', 'width: ' + progress + '%');
+      // loading?.setAttribute('value', String((progress).toFixed()));
+      console.log(loaded)
     }
 
-    this.loadingManager.onLoad = () => {
-      if (progress >= 100) {
-        loading.style.display = 'none';
-        canvas?.removeAttribute('style');
-        setTimeout(() => {
-          this.getInstance();
+    // this.loadingManager.onLoad = () => {
+    //   if (progress >= 100) {
+    //     loading.style.display = 'none';
+    //     canvas?.removeAttribute('style');
+    //     setTimeout(() => {
+    //       this.getInstance();
 
-        }, 1000)
-      }
+    //     }, 1000)
+    //   }
 
-    }
-    // load assets
-    await Promise.all(
-      [
-        this.loadAudio(),
-        this.loadAllWeapons(),
-        this.loadAllTextures(),
-      ]
-    )
+    // }
 
+    await AssetManager.loadAllAsset();
   }
 }
 
