@@ -36,5 +36,5 @@ canvas {
 
 .loading::before {
     @apply w-full h-full flex text-white absolute items-center justify-center;
-    content: attr(value) '%';
+    content: attr(progress) '%';
 }
