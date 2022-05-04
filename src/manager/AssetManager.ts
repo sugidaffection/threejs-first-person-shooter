@@ -20,6 +20,7 @@ export class AssetManager {
             AudioManager.addAudio({ name: 'reload', url: '/assets/sound/reload.mp3' }),
 
             TextureManager.loadTexture({ name: 'sky', url: 'assets/sky.jpg' }),
+            TextureManager.loadTexture({ name: 'skybox', url: 'assets/skybox.png' }),
             TextureManager.loadTexture({ name: 'floor', url: 'assets/floor.jpg' }),
             TextureManager.loadTexture({ name: 'metal', url: 'assets/metal.jpg' }),
             TextureManager.loadTexture({ name: 'flare', url: 'assets/flare.png' }),

@@ -1,14 +1,14 @@
 import { Box } from "cannon-es";
 import { Vec3 } from "math/Vec3";
 import { TextureManager } from "../manager/TextureManager";
-import { BoxGeometry, DoubleSide, Mesh, MeshPhongMaterial, NearestFilter, Object3D, RepeatWrapping, Vector3 } from "three";
+import { BoxGeometry, DoubleSide, FrontSide, Mesh, MeshPhongMaterial, NearestFilter, Object3D, PlaneGeometry, RepeatWrapping, Vector3 } from "three";
 
 export class Ground extends Object3D {
 
     constructor(width: number, height: number, position: Vector3) {
         super();
 
-        const material = new MeshPhongMaterial({ shadowSide: DoubleSide });
+        const material = new MeshPhongMaterial({ shadowSide: FrontSide });
         material.map = TextureManager.getTexture('floor');
         material.map.wrapS = material.map.wrapT = RepeatWrapping;
         material.map.repeat.set(width, height);
@@ -16,11 +16,14 @@ export class Ground extends Object3D {
         material.map.needsUpdate = true;
 
         const mesh = new Mesh(
-            new BoxGeometry(width, height, 1),
+            new PlaneGeometry(width, height, 1),
             material
         );
+        mesh.position.add(position);
         mesh.setRotationFromAxisAngle(new Vector3(1, 0, 0), -Math.PI / 2);
         mesh.receiveShadow = true;
+
+        this.add(mesh);
 
         // const shape = new Box(new Vec3(width / 2, height / 2, depth / 2));
         // const body = new Body({ shape, mass: 0 });

@@ -3,6 +3,7 @@ import {
   Sphere,
   Vec3
 } from 'cannon-es';
+import { WeaponManager } from '../manager/WeaponManager';
 import {
   AudioListener,
   BoxGeometry,
@@ -10,9 +11,13 @@ import {
   MeshPhongMaterial,
   PositionalAudio,
   Vector3,
-  Object3D
+  Object3D,
+  Camera,
+  PerspectiveCamera
 } from 'three';
-import { AudioManager } from '../manager/AudioManager';
+import {
+  AudioManager
+} from '../manager/AudioManager';
 import {
   Bullet
 } from './bullet';
@@ -61,12 +66,15 @@ export class Player extends Object3D {
   private reloadAudio?: PositionalAudio;
   private weapon?: Object3D;
 
+  private camera?: PerspectiveCamera;
+
   constructor(audioListener: AudioListener, name?: string, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
     this.setFireAudio(AudioManager.getAudioBuffer('fire'));
     this.setFootstepAudio(AudioManager.getAudioBuffer('footstep'));
     this.setReloadAudio(AudioManager.getAudioBuffer('reload'));
+
     this.name = name || '';
 
     const mesh = new Mesh(
@@ -90,6 +98,9 @@ export class Player extends Object3D {
       });
       this.position.fromArray(this.body.position.toArray());
     }
+
+    const ump47 = WeaponManager.cloneWeapon('ump47');
+    this.setWeapon(ump47);
   }
 
   toJSON() {
@@ -187,14 +198,19 @@ export class Player extends Object3D {
   }
 
   zoomIn() {
-    if (this.weapon) {
+    if (this.weapon && this.camera) {
       this.weapon.position.x = .0535;
+      this.camera.zoom = 5;
+      this.camera.updateProjectionMatrix();
     }
   }
 
   zoomOut() {
-    if (this.weapon)
+    if (this.weapon && this.camera) {
       this.weapon.position.x = .2;
+      this.camera.zoom = 1;
+      this.camera.updateProjectionMatrix();
+    }
   }
 
   reload() {
