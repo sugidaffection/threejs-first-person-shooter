@@ -1,7 +1,6 @@
 import { Ground } from "../objects/Ground";
 import { SkyBox } from "../objects/SkyBox";
-import { AudioListener, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three";
-import { Player } from "../objects/player";
+import { DirectionalLight, HemisphereLight, Scene, Vector3 } from "three";
 
 export class GameScene extends Scene {
     constructor() {
@@ -24,15 +23,5 @@ export class GameScene extends Scene {
 
         this.add(sky);
         this.add(ground);
-
-        let audioListener = new AudioListener();
-        let player = new Player(audioListener);
-        player.name = 'player';
-
-        this.add(player);
-    }
-
-    update() {
-        this.getObjectByName('player')!.rotation.y -= .01;
     }
 }

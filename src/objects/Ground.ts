@@ -1,7 +1,5 @@
-import { Box } from "cannon-es";
-import { Vec3 } from "math/Vec3";
-import { TextureManager } from "../manager/TextureManager";
-import { BoxGeometry, DoubleSide, FrontSide, Mesh, MeshPhongMaterial, NearestFilter, Object3D, PlaneGeometry, RepeatWrapping, Vector3 } from "three";
+import { FrontSide, Mesh, MeshPhongMaterial, NearestFilter, Object3D, PlaneGeometry, RepeatWrapping, Vector3 } from "three";
+import { AssetManager } from "../manager/AssetManager";
 
 export class Ground extends Object3D {
 
@@ -9,7 +7,7 @@ export class Ground extends Object3D {
         super();
 
         const material = new MeshPhongMaterial({ shadowSide: FrontSide });
-        material.map = TextureManager.getTexture('floor');
+        material.map = AssetManager.getTexture('floor');
         material.map.wrapS = material.map.wrapT = RepeatWrapping;
         material.map.repeat.set(width, height);
         material.map.magFilter = NearestFilter;
