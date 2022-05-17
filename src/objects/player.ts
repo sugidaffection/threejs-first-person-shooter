@@ -11,7 +11,11 @@ import {
   PositionalAudio,
   Vector3,
   Object3D,
-  PerspectiveCamera
+  PerspectiveCamera,
+  Euler,
+  Clock,
+  Quaternion,
+  MeshBasicMaterial
 } from 'three';
 import {
   Bullet
@@ -51,12 +55,12 @@ export class Player extends Object3D {
 
   private audioListener: AudioListener;
 
-  private ammo: number = 20;
-  private maxAmmo: number = 25;
+  private ammo: number = 100;
+  private maxAmmo: number = 100;
   private magazine: number = 30;
   private maxMagazine: number = 30;
 
-  private bulletSpeed: number = 100;
+  private bulletSpeed: number = 30;
 
   private fireAudio?: PositionalAudio;
   private footstepAudio?: PositionalAudio;
@@ -64,7 +68,12 @@ export class Player extends Object3D {
   private weapon?: Object3D;
 
   private camera?: PerspectiveCamera;
-  private controller?: Controller;
+
+  private hand: Object3D;
+  private lt = 0;
+  private bulletSpawner: Object3D;
+  canFire: boolean = false;
+  fireRate: number = .1;
 
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
     super();
@@ -73,8 +82,11 @@ export class Player extends Object3D {
     this.setFootstepAudio(AssetManager.getAudioBuffer('footstep'));
     this.setReloadAudio(AssetManager.getAudioBuffer('reload'));
 
+    this.add(audioListener);
+    this.hand = new Object3D();
+
     const mesh = new Mesh(
-      new BoxGeometry(.5, .7, .5),
+      new BoxGeometry(.3, .7, .3),
       new MeshPhongMaterial({
         color: color || 0xff0000
       })
@@ -83,7 +95,7 @@ export class Player extends Object3D {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    this.add(mesh);
+    this.add(mesh, this.hand);
 
     const shape = new Sphere(.4);
     if (body !== false) {
@@ -95,12 +107,22 @@ export class Player extends Object3D {
       this.position.fromArray(this.body.position.toArray());
     }
 
+
+    this.bulletSpawner = new Object3D();
+
+
     const ump47 = AssetManager.getWeapon('ump47');
     this.setWeapon(ump47);
   }
 
-  setController(controller: Controller) {
-    this.controller = controller;
+  setCamera(camera: PerspectiveCamera) {
+    this.camera = camera;
+    this.camera.rotation.set(0, 0, 0);
+    this.camera.position.copy(this.position);
+  }
+
+  getCamera(): PerspectiveCamera | undefined {
+    return this.camera;
   }
 
   toJSON() {
@@ -137,15 +159,34 @@ export class Player extends Object3D {
     this.magazine = this.maxMagazine;
   }
 
-  setWeapon(object: Object3D): void {
+  setWeapon(w: Object3D): void {
+    w.rotation.y = Math.PI / 2;
+    w.scale.set(.05, .05, .05);
+
+    w.add(this.bulletSpawner);
+
+    this.bulletSpawner.position.x = 4;
+    this.bulletSpawner.position.y = 2.5;
+    this.bulletSpawner.position.z = -1;
+
+    const object = new Object3D();
+    object.add(w)
     object.position.z -= .4;
     object.position.x += .2;
     object.position.y -= .16;
-    object.rotation.y = Math.PI / 2;
-    object.scale.set(.05, .05, .05);
 
-    this.add(object);
+    if (this.weapon)
+      this.hand.remove(this.weapon);
+    this.hand.add(object);
     this.weapon = object;
+  }
+
+  rotateWeapon(euler: Euler) {
+    this.hand.setRotationFromEuler(euler);
+  }
+
+  getWeapon(): Object3D {
+    return this.weapon!;
   }
 
   setGround(value: boolean): void {
@@ -161,31 +202,15 @@ export class Player extends Object3D {
   }
 
   fire(): void {
-    if (this.ammo > 0 && !this.isReloading) {
-      const rotation = this.rotation;
-      const position = new Vector3(
-        .7 * -Math.sin(rotation.y) + this.position.x,
-        this.position.y,
-        .7 * -Math.cos(rotation.y) + this.position.z
-      )
-      const vel = new Vector3(
-        this.bulletSpeed * -Math.sin(rotation.y),
-        0,
-        this.bulletSpeed * -Math.cos(rotation.y)
-      )
+    if (this.ammo > 0 && !this.isReloading && this.canFire) {
+      const quat = this.weapon!.getWorldQuaternion(new Quaternion());
+      const position = this.bulletSpawner!.getWorldPosition(new Vector3());
 
       Bullet.create(
         this.uuid.toString(),
-        new Vec3(
-          position.x,
-          position.y,
-          position.z
-        ),
-        new Vec3(
-          vel.x,
-          vel.y,
-          vel.z
-        )
+        position,
+        quat,
+        this.bulletSpeed
       );
 
       if (this.fireAudio) {
@@ -194,6 +219,8 @@ export class Player extends Object3D {
         this.fireAudio.play();
       }
       this.ammo--;
+
+      this.canFire = false;
     }
   }
 
@@ -234,8 +261,14 @@ export class Player extends Object3D {
     this.isGrounded = data.isGrounded;
   }
 
-  update(): void {
-    this.position.fromArray(this.body.position.toArray());
+  update(dt): void {
+    this.lt += dt;
+
+    if (this.lt > this.fireRate && !this.canFire) {
+      this.canFire = true;
+      this.lt = 0;
+    }
+    // this.position.fromArray(this.body.position.toArray());
 
     if (this.footstepAudio) {
       const velocity = this.body.velocity.clone();
@@ -267,11 +300,11 @@ export class Player extends Object3D {
         this.weapon.rotation.x = 0;
     }
 
-    if (this.body.position.y < -20) {
-      this.body.position.y = 5;
-      this.body.position.x = 0;
-      this.body.position.z = 0;
-      this.body.velocity.setZero();
-    }
+    // if (this.body.position.y < -20) {
+    //   this.body.position.y = 5;
+    //   this.body.position.x = 0;
+    //   this.body.position.z = 0;
+    //   this.body.velocity.setZero();
+    // }
   }
 }

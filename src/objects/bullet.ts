@@ -1,5 +1,5 @@
 import { Body, Sphere, Vec3, World } from 'cannon-es';
-import { Mesh, MeshBasicMaterial, Object3D, Scene, SphereGeometry } from 'three';
+import { Euler, Mesh, MeshBasicMaterial, Object3D, Quaternion, Scene, SphereGeometry, Vector3 } from 'three';
 
 export class Bullet extends Object3D {
 
@@ -7,28 +7,34 @@ export class Bullet extends Object3D {
   static scene: Scene;
   static bullets: Bullet[] = [];
 
-  body: Body;
-  interval: number = 3;
+  body?: Body;
+  range: number = 10;
   private collide: boolean = false;
+  private spawnPosition: Vector3;
 
-  constructor(owner: string, position: Vec3, velocity: Vec3){
+  private speed: number;
+
+  constructor(owner: string, position: Vector3, quat: Quaternion, speed: number) {
     super()
     this.name = owner;
 
     const mesh = new Mesh(
       new SphereGeometry(.03, 32, 32),
-      new MeshBasicMaterial({color: 0x000000})
+      new MeshBasicMaterial({ color: 0x000000 })
     );
     this.add(mesh);
     Bullet.scene.add(this);
 
-    const shape = new Sphere(.03);
-    this.body = new Body({shape: shape, mass: .1});
-    this.body.velocity = velocity;
-    this.body.position.copy(position);
-    this.position.fromArray(position.toArray());
-    Bullet.world.addBody(this.body);
+    // const shape = new Sphere(.03);
+    // this.body = new Body({shape: shape, mass: .1});
+    // this.body.velocity = velocity;
+    // this.body.position.copy(position);
+    this.position.copy(position);
+    this.spawnPosition = new Vector3().copy(this.position);
+    // Bullet.world.addBody(this.body);
+    this.quaternion.copy(quat);
 
+    this.speed = speed;
   }
 
   get isCollide(): boolean {
@@ -39,35 +45,35 @@ export class Bullet extends Object3D {
     this.collide = value;
   }
 
-  public static create(owner: string, position: Vec3, velocity: Vec3): void {
-    const bullet = new Bullet(owner, position, velocity);
+  update(dt: number) {
+    this.translateZ(-this.speed * dt);
+    const distance = this.position.distanceTo(this.spawnPosition);
+    if (distance > this.range || this.isCollide) {
+      Bullet.destroy(this);
+    }
+  }
+
+  public static create(owner: string, position: Vector3, quat: Quaternion, speed: number): void {
+    const bullet = new Bullet(owner, position, quat, speed);
     Bullet.bullets.push(bullet);
 
-    bullet.body.addEventListener('collide', () => {
-      bullet.setCollide(true);
-    });
+    // bullet.body.addEventListener('collide', () => {
+    //   bullet.setCollide(true);
+    // });
   }
 
   public static update(dt: number): void {
 
-    for(const bullet of Bullet.bullets) {
-      bullet.position.fromArray(bullet.body.position.toArray());
-    }
-
-    for(const bullet of Bullet.bullets) {
-      if(bullet.interval >= 0) {
-        bullet.interval -= dt;
-      }
-      if(bullet.interval < 0 || bullet.isCollide ){
-        Bullet.destroy(bullet);
-      }
+    for (const bullet of Bullet.bullets) {
+      // bullet.position.fromArray(bullet.body.position.toArray());
+      bullet.update(dt);
     }
   }
 
   public static destroy(bullet: Bullet): void {
-    Bullet.world.removeBody(bullet.body);
+    // Bullet.world.removeBody(bullet.body);
     Bullet.scene.remove(bullet);
-    
+
     const index = Bullet.bullets.indexOf(bullet);
     Bullet.bullets.splice(index, 1);
   }

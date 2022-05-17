@@ -53,7 +53,9 @@ module.exports = {
   ],
   devServer: {
     hot: true,
-    compress: false,
+    compress: true,
+    disableHostCheck: true,
+    allowedHosts: [],
     static: [
       {
         directory: path.resolve(__dirname, './public')

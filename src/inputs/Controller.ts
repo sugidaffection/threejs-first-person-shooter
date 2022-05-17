@@ -1,5 +1,5 @@
+import { Euler, Object3D, Quaternion, Vector3 } from "three";
 import { Player } from "src/objects/player";
-import { Euler, PerspectiveCamera, Quaternion, Vector3 } from "three";
 
 class Controller {
     static LEFT: boolean = false;
@@ -12,43 +12,76 @@ class Controller {
     static RELOAD: boolean = false;
 
     player: Player;
-    camera: PerspectiveCamera;
 
-    constructor(player: Player, camera: PerspectiveCamera) {
+    object: Object3D = new Object3D();
+    cameraPitch: Object3D = new Object3D();
+    cameraYaw: Object3D = new Object3D();
+
+    euler: Euler;
+    eulerY: Euler = new Euler();
+    quat: Quaternion;
+    quatX = new Quaternion();
+
+    vel: Vector3;
+    acc: Vector3;
+
+    movementSpeed: number = 20;
+
+    mouseSensitivity: number = 0.07;
+
+    maxYaw: number = Math.PI / 180 * 45;
+
+    constructor(player: Player) {
         this.player = player;
-        this.camera = camera;
 
-        const euler = new Euler();
-        const quat = new Quaternion();
+        this.euler = new Euler();
+        this.quat = new Quaternion();
+
+        this.vel = new Vector3();
+        this.acc = new Vector3();
+
+        this.cameraPitch.add(this.player.getCamera()!);
+        this.cameraYaw.add(this.cameraPitch);
+        this.object.add(this.cameraYaw);
+        this.object.position.copy(this.player.position);
+
+        function clamp(value: number, min: number, max: number) {
+            return Math.max(min, Math.min(max, value))
+        }
+
         document.addEventListener('mousemove', (e: MouseEvent) => {
-            const [x, y] = [e.movementX * 0.002, e.movementY * 0.002];
+            const [movementX, movementY] = [
+                e.movementX * this.mouseSensitivity,
+                e.movementY * this.mouseSensitivity
+            ];
 
-            euler.x -= y;
-            euler.y -= x;
-            euler.order = 'XYZ';
-
-            quat.setFromEuler(euler);
-
-            this.player.rotation.setFromQuaternion(quat);
+            this.cameraPitch.rotation.x -= movementY * this.mouseSensitivity;
+            this.cameraPitch.rotation.x = clamp(this.cameraPitch.rotation.x, - this.maxYaw, this.maxYaw);
+            this.cameraYaw.rotation.y -= movementX * this.mouseSensitivity;
         })
     }
 
-    update() {
-        if (Controller.FORWARD) {
-            this.player.position.add(new Vector3(0, 0, -0.05));
-        }
+    update(delta: number = 1 / 60 * 0.1) {
+        this.vel.set(0, 0, 0);
+        if (Controller.FORWARD) this.vel.z = -this.movementSpeed * delta;
+        if (Controller.BACK) this.vel.z = this.movementSpeed * delta;
+        if (Controller.LEFT) this.vel.x = -this.movementSpeed * delta;
+        if (Controller.RIGHT) this.vel.x = this.movementSpeed * delta;
+        if (Controller.FIRE) this.player.fire();
+        if (Controller.RELOAD) this.player.reload();
 
-        if (Controller.LEFT) {
-            this.player.position.add(new Vector3(-.05, 0, 0));
-        }
+        this.euler.x = this.cameraPitch.rotation.x;
+        this.euler.y = this.cameraYaw.rotation.y;
+        this.euler.order = 'XYZ';
+        this.quat.setFromEuler(this.euler);
+        this.vel.applyQuaternion(this.quat);
 
-        if (Controller.BACK) {
-            this.player.position.add(new Vector3(0, 0, 0.05));
-        }
+        this.object.position.x += this.vel.x;
+        this.object.position.z += this.vel.z;
 
-        if (Controller.RIGHT) {
-            this.player.position.add(new Vector3(.05, 0, 0));
-        }
+        this.player.position.copy(this.object.position);
+        this.player.rotateWeapon(this.cameraPitch.rotation);
+        this.player.rotation.y = this.cameraYaw.rotation.y;
     }
 }
 
