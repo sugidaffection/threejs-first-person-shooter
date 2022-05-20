@@ -1,5 +1,5 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { Clock, PCFSoftShadowMap, PerspectiveCamera, Scene, WebGLRenderer } from 'three';
+import { Clock, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, WebGLRenderer } from 'three';
 import { AudioListener } from 'three/src/audio/AudioListener';
 import { Player } from './objects/player';
 import { GameEvent } from './events/GameEvent';
@@ -7,7 +7,6 @@ import { AssetManager } from './manager/AssetManager';
 import { GameScene } from './scenes/GameScene';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { Controller } from './inputs/Controller';
-import { PointerLockControls } from './libs/PointerLockControls';
 import { Bullet } from './objects/bullet';
 
 const [WIDTH, HEIGHT] = [640, 480];
@@ -37,6 +36,7 @@ class Main extends GameEvent {
   private readonly clock: Clock;
   private readonly enemies: Player[] = [];
 
+  private ammoPanel?: HTMLElement;
   constructor() {
     super();
     this.canvas.addEventListener('click', async () => {
@@ -52,7 +52,6 @@ class Main extends GameEvent {
     this.scene = new GameScene();
     this.player = new Player(this.audioListener);
     this.player.setCamera(this.camera);
-    this.player.setWeapon(AssetManager.getWeapon('ump47'));
     this.controller = new Controller(this.player);
     // this.controller = new PointerLockControls(this.camera, this.player) as any as Controller;
     this.scene.add(this.controller.object);
@@ -64,8 +63,19 @@ class Main extends GameEvent {
     enemy.name = 'enemy'
     this.scene.add(enemy);
 
+    const rayCaster = new Raycaster(this.camera.position)
+
+    this.setUI();
 
     this.startLoop();
+  }
+
+  setUI() {
+    const ammo = document.createElement('div');
+    ammo.className = 'ammoPanel';
+    ammo.textContent = '30'
+    this.ammoPanel = ammo;
+    document.querySelector('main .wrapper')?.append(ammo);
   }
 
   setupCamera(): void {
@@ -128,6 +138,10 @@ class Main extends GameEvent {
     this.controller.update();
     this.player.update(dt);
     Bullet.update(dt);
+
+    const weapon = this.player.getWeapon();
+
+    this.ammoPanel!.textContent = `${weapon.getCurrentAmmo()} / ${weapon.getAmmoStorage()}`
   }
 
   public static async main() {

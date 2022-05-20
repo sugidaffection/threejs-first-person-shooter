@@ -19,8 +19,8 @@ export class Bullet extends Object3D {
     this.name = owner;
 
     const mesh = new Mesh(
-      new SphereGeometry(.03, 32, 32),
-      new MeshBasicMaterial({ color: 0x000000 })
+      new SphereGeometry(.01),
+      new MeshBasicMaterial({ color: 0xF00000 })
     );
     this.add(mesh);
     Bullet.scene.add(this);
@@ -46,7 +46,7 @@ export class Bullet extends Object3D {
   }
 
   update(dt: number) {
-    this.translateZ(-this.speed * dt);
+    this.translateZ(-this.speed * 100 * dt);
     const distance = this.position.distanceTo(this.spawnPosition);
     if (distance > this.range || this.isCollide) {
       Bullet.destroy(this);

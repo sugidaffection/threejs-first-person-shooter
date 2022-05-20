@@ -9,19 +9,12 @@ import {
   Mesh,
   MeshPhongMaterial,
   PositionalAudio,
-  Vector3,
   Object3D,
   PerspectiveCamera,
   Euler,
-  Clock,
-  Quaternion,
-  MeshBasicMaterial
 } from 'three';
-import {
-  Bullet
-} from './bullet';
 import { AssetManager } from '../manager/AssetManager';
-import { Controller } from 'src/inputs/Controller';
+import { UMP47, Weapon } from './weapon';
 
 export interface PlayerJSON {
   id: string,
@@ -55,32 +48,19 @@ export class Player extends Object3D {
 
   private audioListener: AudioListener;
 
-  private ammo: number = 100;
-  private maxAmmo: number = 100;
-  private magazine: number = 30;
-  private maxMagazine: number = 30;
-
-  private bulletSpeed: number = 30;
-
-  private fireAudio?: PositionalAudio;
   private footstepAudio?: PositionalAudio;
-  private reloadAudio?: PositionalAudio;
-  private weapon?: Object3D;
+  private weapon?: Weapon;
 
   private camera?: PerspectiveCamera;
 
   private hand: Object3D;
-  private lt = 0;
-  private bulletSpawner: Object3D;
-  canFire: boolean = false;
   fireRate: number = .1;
 
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
-    this.setFireAudio(AssetManager.getAudioBuffer('fire'));
+    this.add(this.audioListener);
     this.setFootstepAudio(AssetManager.getAudioBuffer('footstep'));
-    this.setReloadAudio(AssetManager.getAudioBuffer('reload'));
 
     this.add(audioListener);
     this.hand = new Object3D();
@@ -107,11 +87,7 @@ export class Player extends Object3D {
       this.position.fromArray(this.body.position.toArray());
     }
 
-
-    this.bulletSpawner = new Object3D();
-
-
-    const ump47 = AssetManager.getWeapon('ump47');
+    const ump47 = new UMP47(this.audioListener);
     this.setWeapon(ump47);
   }
 
@@ -139,53 +115,29 @@ export class Player extends Object3D {
     }
   }
 
-  setFireAudio(audio: AudioBuffer): void {
-    this.fireAudio = new PositionalAudio(this.audioListener).setBuffer(audio);
-    this.add(this.fireAudio);
-  }
-
   setFootstepAudio(audio: AudioBuffer): void {
     this.footstepAudio = new PositionalAudio(this.audioListener).setBuffer(audio);
     this.footstepAudio.setPlaybackRate(.5);
     this.add(this.footstepAudio);
   }
 
-  setReloadAudio(audio: AudioBuffer): void {
-    this.reloadAudio = new PositionalAudio(this.audioListener).setBuffer(audio);
-    this.add(this.reloadAudio);
-  }
-
-  fillMagazine() {
-    this.magazine = this.maxMagazine;
-  }
-
-  setWeapon(w: Object3D): void {
+  setWeapon(w: Weapon): void {
     w.rotation.y = Math.PI / 2;
     w.scale.set(.05, .05, .05);
-
-    w.add(this.bulletSpawner);
-
-    this.bulletSpawner.position.x = 4;
-    this.bulletSpawner.position.y = 2.5;
-    this.bulletSpawner.position.z = -1;
-
-    const object = new Object3D();
-    object.add(w)
-    object.position.z -= .4;
-    object.position.x += .2;
-    object.position.y -= .16;
+    w.position.set(.2, -.16, -.4);
 
     if (this.weapon)
-      this.hand.remove(this.weapon);
-    this.hand.add(object);
-    this.weapon = object;
+      this.hand.remove(w);
+    this.hand.add(w);
+
+    this.weapon = w;
   }
 
   rotateWeapon(euler: Euler) {
     this.hand.setRotationFromEuler(euler);
   }
 
-  getWeapon(): Object3D {
+  getWeapon(): Weapon {
     return this.weapon!;
   }
 
@@ -193,35 +145,8 @@ export class Player extends Object3D {
     this.isGrounded = value;
   }
 
-  getAmmo(): number {
-    return this.ammo;
-  }
-
-  getMagazine(): number {
-    return this.magazine;
-  }
-
   fire(): void {
-    if (this.ammo > 0 && !this.isReloading && this.canFire) {
-      const quat = this.weapon!.getWorldQuaternion(new Quaternion());
-      const position = this.bulletSpawner!.getWorldPosition(new Vector3());
-
-      Bullet.create(
-        this.uuid.toString(),
-        position,
-        quat,
-        this.bulletSpeed
-      );
-
-      if (this.fireAudio) {
-        if (this.fireAudio.isPlaying)
-          this.fireAudio.stop();
-        this.fireAudio.play();
-      }
-      this.ammo--;
-
-      this.canFire = false;
-    }
+    this.weapon?.fire();
   }
 
   zoomIn() {
@@ -241,17 +166,7 @@ export class Player extends Object3D {
   }
 
   reload() {
-    if (!this.isReloading && this.ammo < this.maxAmmo && this.magazine > 0) {
-      const needAmmo = this.maxAmmo - this.ammo;
-      const ammo = this.magazine - needAmmo > 0 ? needAmmo : this.magazine;
-      this.ammo += ammo;
-      this.magazine -= ammo;
-
-      if (this.reloadAudio) {
-        this.reloadAudio.play();
-      }
-      this.isReloading = true;
-    }
+    this.weapon?.reload();
   }
 
   updateFromJSON(data: PlayerJSON): void {
@@ -262,12 +177,8 @@ export class Player extends Object3D {
   }
 
   update(dt): void {
-    this.lt += dt;
+    this.weapon?.update(dt);
 
-    if (this.lt > this.fireRate && !this.canFire) {
-      this.canFire = true;
-      this.lt = 0;
-    }
     // this.position.fromArray(this.body.position.toArray());
 
     if (this.footstepAudio) {
@@ -287,17 +198,6 @@ export class Player extends Object3D {
         this.walk = false;
         this.footstepAudio.stop();
       }
-    }
-
-    if (this.reloadAudio) {
-      this.isReloading = this.reloadAudio.isPlaying;
-    }
-
-    if (this.weapon) {
-      if (this.isReloading)
-        this.weapon.rotation.x = Math.PI / 4;
-      else
-        this.weapon.rotation.x = 0;
     }
 
     // if (this.body.position.y < -20) {

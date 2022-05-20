@@ -38,3 +38,11 @@ canvas {
     @apply w-full h-full flex text-white absolute items-center justify-center;
     content: attr(progress) '%';
 }
+
+.wrapper {
+    @apply relative;
+}
+
+.ammoPanel {
+    @apply absolute left-0 top-0 bg-gray-700 bg-opacity-40 px-3 text-sm font-bold ;
+}
