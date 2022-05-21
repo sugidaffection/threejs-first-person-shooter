@@ -53,7 +53,9 @@ export class Player extends Object3D {
 
   private camera?: PerspectiveCamera;
 
+  private pBody: Object3D;
   private hand: Object3D;
+
   fireRate: number = .1;
 
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
@@ -64,6 +66,7 @@ export class Player extends Object3D {
 
     this.add(audioListener);
     this.hand = new Object3D();
+    this.pBody = new Object3D();
 
     const mesh = new Mesh(
       new BoxGeometry(.3, .7, .3),
@@ -75,7 +78,9 @@ export class Player extends Object3D {
     mesh.castShadow = true;
     mesh.receiveShadow = true;
 
-    this.add(mesh, this.hand);
+    this.pBody.add(this.hand);
+
+    this.add(mesh, this.pBody);
 
     const shape = new Sphere(.4);
     if (body !== false) {
@@ -97,8 +102,9 @@ export class Player extends Object3D {
 
   setCamera(camera: PerspectiveCamera) {
     this.camera = camera;
-    this.camera.rotation.set(0, 2, 0);
+    this.camera.rotation.set(0, 0, 0);
     this.camera.position.copy(this.position);
+    this.pBody.add(this.camera);
   }
 
   getCamera(): PerspectiveCamera | undefined {
@@ -138,7 +144,7 @@ export class Player extends Object3D {
   }
 
   rotateWeapon(euler: Euler) {
-    this.hand.setRotationFromEuler(euler);
+    this.pBody.setRotationFromEuler(euler);
   }
 
   getWeapon(): Weapon {

@@ -134,7 +134,7 @@ class Main extends GameEvent {
 
   update(): void {
     const dt = this.clock.getDelta();
-    this.renderer.render(this.scene, this.camera);
+    this.renderer.render(this.scene, this.controller.camera);
     this.controller.update(dt);
     this.player.update(dt);
     Bullet.update(dt);
