@@ -91,9 +91,13 @@ export class Player extends Object3D {
     this.setWeapon(ump47);
   }
 
+  getHand() {
+    return this.hand;
+  }
+
   setCamera(camera: PerspectiveCamera) {
     this.camera = camera;
-    this.camera.rotation.set(0, 0, 0);
+    this.camera.rotation.set(0, 2, 0);
     this.camera.position.copy(this.position);
   }
 
@@ -123,8 +127,8 @@ export class Player extends Object3D {
 
   setWeapon(w: Weapon): void {
     w.rotation.y = Math.PI / 2;
-    w.scale.set(.05, .05, .05);
-    w.position.set(.2, -.16, -.4);
+    w.scale.setScalar(0.04);
+    w.position.set(.2, -.07, -.25);
 
     if (this.weapon)
       this.hand.remove(w);

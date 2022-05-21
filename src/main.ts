@@ -1,13 +1,15 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { Clock, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, WebGLRenderer } from 'three';
+import { Clock, MathUtils, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, Vector3, WebGLRenderer } from 'three';
 import { AudioListener } from 'three/src/audio/AudioListener';
 import { Player } from './objects/player';
 import { GameEvent } from './events/GameEvent';
 import { AssetManager } from './manager/AssetManager';
 import { GameScene } from './scenes/GameScene';
 import { LoadingScreen } from './screens/LoadingScreen';
-import { Controller } from './inputs/Controller';
 import { Bullet } from './objects/bullet';
+import { FirstPersonCamera } from './cameras/FirstPersonCamera';
+import { FirstPersonController } from './controllers/FirstPersonController';
+import { MouseInput } from './inputs/MouseInput';
 
 const [WIDTH, HEIGHT] = [640, 480];
 
@@ -32,7 +34,7 @@ class Main extends GameEvent {
   private readonly camera: PerspectiveCamera;
   private readonly scene: Scene;
   private readonly player: Player;
-  private readonly controller: any;
+  private readonly controller: FirstPersonController;
   private readonly clock: Clock;
   private readonly enemies: Player[] = [];
 
@@ -50,18 +52,16 @@ class Main extends GameEvent {
     this.setupCamera();
     this.audioListener = new AudioListener();
     this.scene = new GameScene();
-    this.player = new Player(this.audioListener);
-    this.player.setCamera(this.camera);
-    this.controller = new Controller(this.player);
+    const player = new Player(this.audioListener);
+    const fpsCam = new FirstPersonCamera();
+    player.setCamera(fpsCam);
+    this.player = player;
+    this.controller = new FirstPersonController(player, fpsCam);
     // this.controller = new PointerLockControls(this.camera, this.player) as any as Controller;
-    this.scene.add(this.controller.object);
-    this.scene.add(this.player);
+    // this.scene.add(this.controller.object);
+    this.scene.add(player);
     Bullet.scene = this.scene;
     this.clock = new Clock();
-
-    const enemy = new Player(this.audioListener);
-    enemy.name = 'enemy'
-    this.scene.add(enemy);
 
     const rayCaster = new Raycaster(this.camera.position)
 
@@ -135,13 +135,26 @@ class Main extends GameEvent {
   update(): void {
     const dt = this.clock.getDelta();
     this.renderer.render(this.scene, this.camera);
-    this.controller.update();
+    this.controller.update(dt);
     this.player.update(dt);
     Bullet.update(dt);
+
+    // const playerCam = this.player.getCamera();
+    // const playerPos = playerCam?.getWorldPosition(new Vector3())!;
+
+    // if (this.camera.position.distanceTo(playerPos) > 0) {
+    //   this.camera.position.lerp(playerPos, dt);
+    //   this.camera.position.copy(playerPos);
+    // }
+
+    // (<FirstPersonCamera>this.player.getCamera()).update(dt);
 
     const weapon = this.player.getWeapon();
 
     this.ammoPanel!.textContent = `${weapon.getCurrentAmmo()} / ${weapon.getAmmoStorage()}`
+
+
+    MouseInput.reset();
   }
 
   public static async main() {

@@ -1,46 +1,52 @@
-import { Controller } from "../inputs/Controller";
+import { MouseInput } from "../inputs/MouseInput";
+import { KeyboardInput } from "../inputs/KeyboardInput";
 
 class InputEvent {
-
-    activeInputKeys: any = {};
 
     constructor() {
         addEventListener('keydown', (e: KeyboardEvent) => this.inputEvent(e));
         addEventListener('keyup', (e: KeyboardEvent) => this.inputEvent(e));
         addEventListener('mousedown', (e: MouseEvent) => this.inputEvent(e));
         addEventListener('mouseup', (e: MouseEvent) => this.inputEvent(e));
+        addEventListener('mousemove', (e: MouseEvent) => this.inputEvent(e));
     }
 
     inputEvent(e: KeyboardEvent | MouseEvent) {
         if (e instanceof MouseEvent) {
             if (e.button == 0)
-                Controller.FIRE = e.type == 'mousedown';
+                KeyboardInput.FIRE = e.type == 'mousedown';
+            MouseInput.MOVEMENTX = e.movementX;
+            MouseInput.MOVEMENTY = e.movementY;
         }
 
         if (e instanceof KeyboardEvent) {
             switch (e.code) {
                 case 'KeyA':
-                    Controller.LEFT = e.type == 'keydown';
+                    KeyboardInput.LEFT = e.type == 'keydown';
                     break;
                 case 'KeyD':
-                    Controller.RIGHT = e.type == 'keydown';
+                    KeyboardInput.RIGHT = e.type == 'keydown';
                     break;
                 case 'KeyW':
-                    Controller.FORWARD = e.type == 'keydown';
+                    KeyboardInput.FORWARD = e.type == 'keydown';
                     break;
                 case 'KeyS':
-                    Controller.BACK = e.type == 'keydown';
+                    KeyboardInput.BACK = e.type == 'keydown';
                     break;
                 case 'Space':
-                    Controller.JUMP = e.type == 'keydown';
+                    KeyboardInput.JUMP = e.type == 'keydown';
                     break;
                 case 'KeyR':
-                    Controller.RELOAD = e.type == 'keydown';
+                    KeyboardInput.RELOAD = e.type == 'keydown';
                     break;
                 default:
                     break;
             }
         }
+    }
+
+    update() {
+
     }
 }
 
