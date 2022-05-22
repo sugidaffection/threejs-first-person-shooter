@@ -69,7 +69,6 @@ export class Player extends Object3D {
     this.add(this.audioListener);
     this.setFootstepAudio(AssetManager.getAudioBuffer('footstep'));
 
-    this.add(audioListener);
     this.hand = new Object3D();
     this.pBody = new Object3D();
 
@@ -97,9 +96,9 @@ export class Player extends Object3D {
       this.position.fromArray(this.body.position.toArray());
     }
 
-    // const ump47 = new UMP47(this.audioListener);
-    const kriss = new Kriss(this.audioListener);
-    this.setWeapon(kriss);
+    const ump47 = new UMP47(this.audioListener);
+    // const kriss = new Kriss(this.audioListener);
+    this.setWeapon(ump47);
   }
 
   getHand() {
@@ -140,7 +139,7 @@ export class Player extends Object3D {
   setWeapon(w: Weapon): void {
     // w.rotation.y = Math.PI / 2;
     w.scale.setScalar(0.05);
-    w.position.set(.2, -.07, -.25);
+    w.position.set(.2, -.07, -.37);
 
     if (this.weapon)
       this.hand.remove(w);

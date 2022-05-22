@@ -1,14 +1,8 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { Clock, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, Vector3, WebGLRenderer } from 'three';
-import { AudioListener } from 'three/src/audio/AudioListener';
-import { Player } from './objects/player';
+import { PCFSoftShadowMap, WebGLRenderer } from 'three';
 import { GameEvent } from './events/GameEvent';
 import { AssetManager } from './manager/AssetManager';
-import { GameScene } from './scenes/GameScene';
 import { LoadingScreen } from './screens/LoadingScreen';
-import { Bullet } from './objects/bullet';
-import { FirstPersonCamera } from './cameras/FirstPersonCamera';
-import { FirstPersonController } from './controllers/FirstPersonController';
 import { MouseInput } from './inputs/MouseInput';
 import { SceneManager } from './manager/SceneManager';
 
@@ -31,11 +25,7 @@ class Main extends GameEvent {
   private readonly world: World = new World()
   private readonly canvas: HTMLElement = getCanvas;
   private readonly renderer: WebGLRenderer;
-  private readonly camera: PerspectiveCamera;
   private readonly sceneManager: SceneManager;
-  private readonly clock: Clock;
-
-  private ammoPanel?: HTMLElement;
   constructor() {
     super();
     this.canvas.addEventListener('click', async () => {
@@ -44,15 +34,12 @@ class Main extends GameEvent {
     });
 
     this.renderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
-    this.camera = new PerspectiveCamera(75, 1, .1, 1000);
-    this.setupRenderer();
-    this.setupCamera();
-
     this.sceneManager = SceneManager.getInstance();
+    this.sceneManager.setRenderer(this.renderer);
+    this.setupRenderer();
+    this.updateCameraView();
 
-    this.clock = new Clock();
-
-    this.setUI();
+    // this.setUI();
 
     this.startLoop();
   }
@@ -61,22 +48,14 @@ class Main extends GameEvent {
     const ammo = document.createElement('div');
     ammo.className = 'ammoPanel';
     ammo.textContent = '30'
-    this.ammoPanel = ammo;
+    // this.ammoPanel = ammo;
     document.querySelector('main .wrapper')?.append(ammo);
   }
 
-  setupCamera(): void {
-    this.camera.position.set(0, 0, 2);
-    this.camera.rotation.set(0, .5, 0);
-    this.updateCameraView(WIDTH, HEIGHT);
-  }
-
-  updateCameraView(width: number, height: number) {
-    this.renderer.setSize(width, height);
-    let aspectRatio = width / height;
-    if (height > width) aspectRatio = height / width;
-    this.camera.aspect = aspectRatio;
-    this.camera.updateProjectionMatrix();
+  updateCameraView() {
+    let aspectRatio = WIDTH / HEIGHT;
+    if (HEIGHT > WIDTH) aspectRatio = HEIGHT / WIDTH;
+    this.sceneManager.updateCameraAspectRatio(aspectRatio)
   }
 
   setupRenderer(): void {
@@ -88,7 +67,6 @@ class Main extends GameEvent {
   }
 
   startLoop(): void {
-    this.clock.start();
     this.renderer.setAnimationLoop(() => {
       this.update();
     });
@@ -120,17 +98,7 @@ class Main extends GameEvent {
   }
 
   update(): void {
-    const dt = this.clock.getDelta();
-    if (!this.sceneManager.currentScene)
-      this.sceneManager.loadScene();
-
-    this.renderer.render(<Scene>this.sceneManager.currentScene, this.camera);
-    this.sceneManager.update(dt);
-
-    // const weapon = this.player.getWeapon();
-    // this.ammoPanel!.textContent = `${weapon.getCurrentAmmo()} / ${weapon.getLeftAmmo()}`
-
-
+    this.sceneManager.update();
     MouseInput.reset();
   }
 

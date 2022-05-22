@@ -1,20 +1,25 @@
 import { Ground } from "../objects/Ground";
 import { SkyBox } from "../objects/SkyBox";
-import { AudioListener, DirectionalLight, HemisphereLight, Scene, Vector3 } from "three";
-import { Bullet } from "src/objects/bullet";
-import { Player } from "src/objects/player";
-import { FirstPersonController } from "src/controllers/FirstPersonController";
-import { FirstPersonCamera } from "src/cameras/FirstPersonCamera";
+import { AudioListener, DirectionalLight, HemisphereLight, PerspectiveCamera, Quaternion, Scene, Vector3 } from "three";
+import { Bullet } from "../objects/bullet";
+import { Player } from "../objects/player";
+import { FirstPersonController } from "../controllers/FirstPersonController";
+import { FirstPersonCamera } from "../cameras/FirstPersonCamera";
 
 export class GameScene extends Scene {
 
     private player?: Player;
     private controller?: FirstPersonController;
-    constructor() {
+
+    private camera: PerspectiveCamera;
+    private audioListener: AudioListener;
+    constructor(camera: PerspectiveCamera, audioListener: AudioListener) {
         super();
+        this.camera = camera;
+        this.audioListener = audioListener;
     }
 
-    init(audioListener: AudioListener) {
+    init() {
         const hemisphereLight = new HemisphereLight();
         hemisphereLight.position.set(0, 50, 0);
         hemisphereLight.intensity = .2;
@@ -33,9 +38,10 @@ export class GameScene extends Scene {
         this.add(sky);
         this.add(ground);
 
-        const player = new Player(audioListener);
+        const player = new Player(this.audioListener);
         const fpsCam = new FirstPersonCamera();
         player.setCamera(fpsCam);
+        this.player = player;
         this.controller = new FirstPersonController(player, fpsCam);
 
         this.add(player);
@@ -46,6 +52,12 @@ export class GameScene extends Scene {
     update(dt) {
         this.controller?.update(dt);
         this.player?.update(dt);
+
+        const camera = this.player?.getCamera()
+        if (camera) {
+            this.camera.position.copy(camera.getWorldPosition(new Vector3()));
+            this.camera.quaternion.copy(camera.getWorldQuaternion(new Quaternion()));
+        }
         Bullet.update(dt);
     }
 }
