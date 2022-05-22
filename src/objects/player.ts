@@ -14,7 +14,7 @@ import {
   Euler,
 } from 'three';
 import { AssetManager } from '../manager/AssetManager';
-import { UMP47, Weapon } from './weapon';
+import { Kriss, UMP47, Weapon } from './weapon';
 
 export interface PlayerJSON {
   id: string,
@@ -38,6 +38,14 @@ export interface PlayerJSON {
   magazine: number
 }
 
+export enum PlayerState {
+  IDLE,
+  WALK,
+  RUN,
+  JUMP,
+  CROUCH,
+}
+
 export class Player extends Object3D {
 
   body!: Body;
@@ -55,9 +63,6 @@ export class Player extends Object3D {
 
   private pBody: Object3D;
   private hand: Object3D;
-
-  fireRate: number = .1;
-
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
@@ -92,8 +97,9 @@ export class Player extends Object3D {
       this.position.fromArray(this.body.position.toArray());
     }
 
-    const ump47 = new UMP47(this.audioListener);
-    this.setWeapon(ump47);
+    // const ump47 = new UMP47(this.audioListener);
+    const kriss = new Kriss(this.audioListener);
+    this.setWeapon(kriss);
   }
 
   getHand() {
@@ -103,7 +109,7 @@ export class Player extends Object3D {
   setCamera(camera: PerspectiveCamera) {
     this.camera = camera;
     this.camera.rotation.set(0, 0, 0);
-    this.camera.position.copy(this.position);
+    this.camera.position.set(0, 0.1, 0);
     this.pBody.add(this.camera);
   }
 
@@ -132,8 +138,8 @@ export class Player extends Object3D {
   }
 
   setWeapon(w: Weapon): void {
-    w.rotation.y = Math.PI / 2;
-    w.scale.setScalar(0.04);
+    // w.rotation.y = Math.PI / 2;
+    w.scale.setScalar(0.05);
     w.position.set(.2, -.07, -.25);
 
     if (this.weapon)
@@ -191,24 +197,24 @@ export class Player extends Object3D {
 
     // this.position.fromArray(this.body.position.toArray());
 
-    if (this.footstepAudio) {
-      const velocity = this.body.velocity.clone();
-      velocity.y = 0;
-      if (!velocity.almostZero(1)) {
-        this.walk = true;
-      } else {
-        this.walk = false;
-      }
+    // if (this.footstepAudio) {
+    //   const velocity = this.body.velocity.clone();
+    //   velocity.y = 0;
+    //   if (!velocity.almostZero(1)) {
+    //     this.walk = true;
+    //   } else {
+    //     this.walk = false;
+    //   }
 
-      if (this.isGrounded && this.walk && !this.footstepAudio.isPlaying) {
-        this.footstepAudio.play();
-      }
+    //   if (this.isGrounded && this.walk && !this.footstepAudio.isPlaying) {
+    //     this.footstepAudio.play();
+    //   }
 
-      if (!this.isGrounded && this.footstepAudio.isPlaying) {
-        this.walk = false;
-        this.footstepAudio.stop();
-      }
-    }
+    //   if (!this.isGrounded && this.footstepAudio.isPlaying) {
+    //     this.walk = false;
+    //     this.footstepAudio.stop();
+    //   }
+    // }
 
     // if (this.body.position.y < -20) {
     //   this.body.position.y = 5;

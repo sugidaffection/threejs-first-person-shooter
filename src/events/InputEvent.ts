@@ -13,35 +13,28 @@ class InputEvent {
 
     inputEvent(e: KeyboardEvent | MouseEvent) {
         if (e instanceof MouseEvent) {
-            if (e.button == 0)
-                KeyboardInput.FIRE = e.type == 'mousedown';
+            if (e.type == 'mousedown')
+                KeyboardInput.FIRE = e.button == 0;
+            else if (e.type == 'mouseup')
+                KeyboardInput.FIRE = false;
+
             MouseInput.MOVEMENTX = e.movementX;
             MouseInput.MOVEMENTY = e.movementY;
         }
 
         if (e instanceof KeyboardEvent) {
-            switch (e.code) {
-                case 'KeyA':
-                    KeyboardInput.LEFT = e.type == 'keydown';
-                    break;
-                case 'KeyD':
-                    KeyboardInput.RIGHT = e.type == 'keydown';
-                    break;
-                case 'KeyW':
-                    KeyboardInput.FORWARD = e.type == 'keydown';
-                    break;
-                case 'KeyS':
-                    KeyboardInput.BACK = e.type == 'keydown';
-                    break;
-                case 'Space':
-                    KeyboardInput.JUMP = e.type == 'keydown';
-                    break;
-                case 'KeyR':
-                    KeyboardInput.RELOAD = e.type == 'keydown';
-                    break;
-                default:
-                    break;
-            }
+            if (e.code == 'KeyA')
+                KeyboardInput.LEFT = e.type == 'keydown';
+            if (e.code == 'KeyD')
+                KeyboardInput.RIGHT = e.type == 'keydown';
+            if (e.code == 'KeyW')
+                KeyboardInput.FORWARD = e.type == 'keydown';
+            if (e.code == 'KeyS')
+                KeyboardInput.BACK = e.type == 'keydown';
+            if (e.code == 'Space')
+                KeyboardInput.JUMP = e.type == 'keydown';
+            if (e.code == 'KeyR')
+                KeyboardInput.RELOAD = e.type == 'keydown';
         }
     }
 

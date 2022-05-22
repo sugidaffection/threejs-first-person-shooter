@@ -1,5 +1,5 @@
 import { AssetManager } from "../manager/AssetManager";
-import { AudioListener, Object3D, PositionalAudio, Quaternion, Vector3 } from "three";
+import { AudioListener, Object3D, PositionalAudio, Quaternion, Ray, Vector3 } from "three";
 import { Bullet } from "./bullet";
 
 export enum WeaponState {
@@ -19,8 +19,8 @@ export class Weapon extends Object3D {
 
     protected currentAmmo: number;
     protected maxAmmo: number;
-    protected ammoStorage: number;
-    protected maxAmmoStorage: number;
+    protected leftAmmo: number;
+    protected magazineSize: number;
 
     protected state: WeaponState;
 
@@ -31,13 +31,13 @@ export class Weapon extends Object3D {
     constructor(audioListener: AudioListener) {
         super();
 
-        this.fireRate = 0.75;
-        this.fireSpeed = 0.8;
+        this.fireRate = 0.4;
+        this.fireSpeed = 3;
 
         this.currentAmmo = 30;
         this.maxAmmo = 30;
-        this.ammoStorage = 100;
-        this.maxAmmoStorage = 100;
+        this.leftAmmo = 100;
+        this.magazineSize = 100;
 
         this.state = WeaponState.IDLE;
 
@@ -45,7 +45,6 @@ export class Weapon extends Object3D {
         this.lt = 0;
 
         this.audioListener = audioListener;
-
 
         this.emitter = new Object3D();
         this.add(this.emitter);
@@ -65,8 +64,8 @@ export class Weapon extends Object3D {
         return this.currentAmmo;
     }
 
-    getAmmoStorage() {
-        return this.ammoStorage;
+    getLeftAmmo() {
+        return this.leftAmmo;
     }
 
     fire() {
@@ -94,7 +93,7 @@ export class Weapon extends Object3D {
     }
 
     reload() {
-        if (this.state == WeaponState.IDLE && this.currentAmmo < this.maxAmmo && this.ammoStorage > 0) {
+        if (this.state == WeaponState.IDLE && this.currentAmmo < this.maxAmmo && this.leftAmmo > 0) {
             this.lt = 0;
             this.state = WeaponState.RELOAD
             this.rotation.x = Math.PI / 4;
@@ -104,9 +103,9 @@ export class Weapon extends Object3D {
 
     fillAmmo() {
         const neededAmmo = this.maxAmmo - this.currentAmmo;
-        const ammo = this.ammoStorage - neededAmmo > 0 ? neededAmmo : this.ammoStorage;
+        const ammo = this.leftAmmo - neededAmmo > 0 ? neededAmmo : this.leftAmmo;
         this.currentAmmo += ammo;
-        this.ammoStorage -= ammo;
+        this.leftAmmo -= ammo;
     }
 
     playFireAudio() {
@@ -134,9 +133,20 @@ export class Weapon extends Object3D {
 export class UMP47 extends Weapon {
     constructor(audioListener: AudioListener) {
         super(audioListener);
-        this.fireRate = 0.07;
-        this.fireSpeed = 0.1;
+        this.fireRate = 0.1;
+        this.fireSpeed = 10;
         const object = AssetManager.getWeapon('ump47');
+        this.add(object);
+        this.emitter.position.set(4, 2.5, -1.7);
+    }
+}
+
+export class Kriss extends Weapon {
+    constructor(audioListener: AudioListener) {
+        super(audioListener);
+        this.fireRate = 0.1;
+        this.fireSpeed = 10;
+        const object = AssetManager.getWeapon('kriss');
         this.add(object);
         this.emitter.position.set(4, 2.5, -1.7);
     }

@@ -69,7 +69,8 @@ export class AssetManager extends LoadingManager {
             this.textureManager.loadTexture({ name: 'flare', url: '/assets/flare.png' }),
             this.textureManager.loadTexture({ name: 'circle', url: '/assets/circle.jpg' }),
 
-            this.weaponManager.loadWeapon({ name: 'ump47', materialURL: '/assets/ump47.mtl', objURL: '/assets/ump47.obj' })
+            this.weaponManager.loadWeapon({ name: 'ump47', materialURL: '/assets/ump47.mtl', objURL: '/assets/ump47.obj' }),
+            this.weaponManager.loadWeapon({ name: 'kriss', objURL: '/assets/kriss.obj' })
         ])
     }
 

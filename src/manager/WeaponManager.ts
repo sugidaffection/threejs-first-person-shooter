@@ -1,10 +1,11 @@
-import { LoadingManager, Object3D } from "three";
+import { Group, LoadingManager, Object3D, ObjectLoader } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
+import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
 
 interface TextureItem {
     name: string,
-    obj: Object3D
+    obj: Group | Object3D
 }
 
 export class WeaponManager {
@@ -34,21 +35,36 @@ export class WeaponManager {
             this.onLoadProgress(event);
     }
 
-    async loadWeapon({ name, materialURL, objURL }: { [key: string]: string }): Promise<string> {
+    async loadWeapon({ name, objURL, materialURL }: { [key: string]: string }): Promise<string> {
         if (this.list.some(weapon => weapon.name == name))
             return Promise.reject(new Error('Duplicate weapon name.'));
 
-        const materials = await this.mtlLoader.loadAsync(materialURL, this.onLoadProgressHandler);
-        if (!materials)
-            return Promise.reject(new Error(`Failed to load material ${materialURL}`))
-        materials.preload();
+        // if (materialURL) {
+        //     const materials = await this.mtlLoader.loadAsync(materialURL, this.onLoadProgressHandler);
+        //     if (!materials)
+        //         return Promise.reject(new Error(`Failed to load material ${materialURL}`))
+        //     materials.preload();
+        //     this.objLoader.setMaterials(materials);
+        // }
 
-        const ump47 = await this.objLoader.loadAsync(objURL, this.onLoadProgressHandler);
-        if (!ump47)
-            return Promise.reject(new Error(`Failed to load Object ${objURL}`))
+        let gltf: Object3D | null = null;
 
-        const obj: Object3D = new Object3D();
-        obj.add(ump47);
+        try {
+            gltf = await this.objLoader.loadAsync(objURL, this.onLoadProgressHandler);
+
+        } catch (er) {
+            console.log(er);
+            return Promise.reject(new Error(`Failed to load Object ${er}`))
+        }
+
+        console.log(gltf);
+
+        // if (!gltf)
+        // const obj: Object3D = new Object3D();
+        // obj.add(weapon);
+
+
+        const obj = gltf;
 
         this.list.push({ name, obj });
 

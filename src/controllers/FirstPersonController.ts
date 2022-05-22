@@ -1,12 +1,17 @@
 import { KeyboardInput } from "../inputs/KeyboardInput";
-import { Euler, Quaternion, Vector3 } from "three";
+import { Euler, MathUtils, Quaternion, Vector3 } from "three";
 import { FirstPersonCamera } from "../cameras/FirstPersonCamera";
 import { Player } from "../objects/player";
+import { MouseInput } from "../inputs/MouseInput";
 
 export class FirstPersonController {
 
     player: Player;
     camera: FirstPersonCamera;
+
+    pitch: number;
+    yaw: number;
+    maxPitch: number;
 
     movementSpeed: number;
     horizontalSensitivity: number;
@@ -23,7 +28,11 @@ export class FirstPersonController {
         this.player = player;
         this.camera = camera;
 
-        this.movementSpeed = .75;
+        this.pitch = 0;
+        this.yaw = 0;
+        this.maxPitch = MathUtils.degToRad(65);
+
+        this.movementSpeed = 10;
         this.horizontalSensitivity = .45;
         this.verticalSensitivity = .45;
 
@@ -36,7 +45,10 @@ export class FirstPersonController {
     }
 
     update(dt: number) {
-        this.camera.update(dt);
+        this.pitch -= MouseInput.MOVEMENTY * dt * this.verticalSensitivity;
+        this.pitch = MathUtils.clamp(this.pitch, -this.maxPitch, this.maxPitch);
+        this.yaw -= MouseInput.MOVEMENTX * dt * this.horizontalSensitivity;
+
         this.velocity.multiplyScalar(0);
 
         if (KeyboardInput.FORWARD) this.velocity.z = -this.movementSpeed * dt;
@@ -46,8 +58,8 @@ export class FirstPersonController {
         if (KeyboardInput.FIRE) this.player.fire();
         if (KeyboardInput.RELOAD) this.player.reload();
 
-        this.euler.x = this.camera.pitch;
-        this.euler.y = this.camera.yaw;
+        this.euler.x = this.pitch;
+        this.euler.y = this.yaw;
         this.euler.order = 'XYZ';
         this.quaternion.setFromEuler(this.euler);
 
@@ -56,9 +68,9 @@ export class FirstPersonController {
 
         this.position.add(this.velocity);
         this.player.position.copy(this.position);
-        this.player.rotation.y = this.camera.yaw;
+        this.player.rotation.y = this.yaw;
 
-        this.player.rotateWeapon(new Euler(this.camera.pitch));
+        this.player.rotateWeapon(new Euler(this.pitch));
 
     }
 }

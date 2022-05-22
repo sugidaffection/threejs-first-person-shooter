@@ -1,5 +1,5 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { Clock, MathUtils, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, Vector3, WebGLRenderer } from 'three';
+import { Clock, PCFSoftShadowMap, PerspectiveCamera, Raycaster, Scene, Vector3, WebGLRenderer } from 'three';
 import { AudioListener } from 'three/src/audio/AudioListener';
 import { Player } from './objects/player';
 import { GameEvent } from './events/GameEvent';
@@ -10,6 +10,7 @@ import { Bullet } from './objects/bullet';
 import { FirstPersonCamera } from './cameras/FirstPersonCamera';
 import { FirstPersonController } from './controllers/FirstPersonController';
 import { MouseInput } from './inputs/MouseInput';
+import { SceneManager } from './manager/SceneManager';
 
 const [WIDTH, HEIGHT] = [640, 480];
 
@@ -30,13 +31,9 @@ class Main extends GameEvent {
   private readonly world: World = new World()
   private readonly canvas: HTMLElement = getCanvas;
   private readonly renderer: WebGLRenderer;
-  private readonly audioListener: AudioListener;
   private readonly camera: PerspectiveCamera;
-  private readonly scene: Scene;
-  private readonly player: Player;
-  private readonly controller: FirstPersonController;
+  private readonly sceneManager: SceneManager;
   private readonly clock: Clock;
-  private readonly enemies: Player[] = [];
 
   private ammoPanel?: HTMLElement;
   constructor() {
@@ -50,20 +47,10 @@ class Main extends GameEvent {
     this.camera = new PerspectiveCamera(75, 1, .1, 1000);
     this.setupRenderer();
     this.setupCamera();
-    this.audioListener = new AudioListener();
-    this.scene = new GameScene();
-    const player = new Player(this.audioListener);
-    const fpsCam = new FirstPersonCamera();
-    player.setCamera(fpsCam);
-    this.player = player;
-    this.controller = new FirstPersonController(player, fpsCam);
-    // this.controller = new PointerLockControls(this.camera, this.player) as any as Controller;
-    // this.scene.add(this.controller.object);
-    this.scene.add(player);
-    Bullet.scene = this.scene;
-    this.clock = new Clock();
 
-    const rayCaster = new Raycaster(this.camera.position)
+    this.sceneManager = SceneManager.getInstance();
+
+    this.clock = new Clock();
 
     this.setUI();
 
@@ -134,24 +121,14 @@ class Main extends GameEvent {
 
   update(): void {
     const dt = this.clock.getDelta();
-    this.renderer.render(this.scene, this.controller.camera);
-    this.controller.update(dt);
-    this.player.update(dt);
-    Bullet.update(dt);
+    if (!this.sceneManager.currentScene)
+      this.sceneManager.loadScene();
 
-    // const playerCam = this.player.getCamera();
-    // const playerPos = playerCam?.getWorldPosition(new Vector3())!;
+    this.renderer.render(<Scene>this.sceneManager.currentScene, this.camera);
+    this.sceneManager.update(dt);
 
-    // if (this.camera.position.distanceTo(playerPos) > 0) {
-    //   this.camera.position.lerp(playerPos, dt);
-    //   this.camera.position.copy(playerPos);
-    // }
-
-    // (<FirstPersonCamera>this.player.getCamera()).update(dt);
-
-    const weapon = this.player.getWeapon();
-
-    this.ammoPanel!.textContent = `${weapon.getCurrentAmmo()} / ${weapon.getAmmoStorage()}`
+    // const weapon = this.player.getWeapon();
+    // this.ammoPanel!.textContent = `${weapon.getCurrentAmmo()} / ${weapon.getLeftAmmo()}`
 
 
     MouseInput.reset();
@@ -165,15 +142,11 @@ class Main extends GameEvent {
       loading.progress = Math.ceil(loaded / total * 100);
       loading.update();
     }
-    assetManager.onLoad = () => {
-    }
-
     assetManager.loadAllAsset().then(() => {
       console.log('loaded all assets');
       loading.destroy();
 
       this.getInstance();
-
     });
   }
 }
