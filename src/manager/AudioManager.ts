@@ -1,38 +1,26 @@
 import { AudioLoader, LoadingManager } from "three";
+import { BaseManager } from "./Manager";
 
 interface AudioItem {
     name: string,
     buffer: AudioBuffer
 }
 
-class AudioManager {
+class AudioManager extends BaseManager<AudioManager>() {
 
     private list: Array<AudioItem>;
     private audioLoader: AudioLoader;
 
-    onLoadProgress?: (event: ProgressEvent<EventTarget>) => void;
-
-    constructor(
-        onLoadProgress?: (event: ProgressEvent<EventTarget>) => void
-    ) {
+    constructor() {
+        super();
         this.list = new Array<AudioItem>();
         this.audioLoader = new AudioLoader();
-        this.onLoadProgress = onLoadProgress;
-    }
-
-    setLoadingManager(manager: LoadingManager) {
-        this.audioLoader.manager = manager;
-    }
-
-    onLoadProgressHandler(event: ProgressEvent<EventTarget>) {
-        if (this.onLoadProgress)
-            this.onLoadProgress(event);
     }
 
     async loadAudio({ name, url }: { [key: string]: string }): Promise<string> {
         if (this.list.some((audio: AudioItem) => audio.name == name))
             return Promise.reject(new Error('Duplicate audio name.'));
-        const buffer = await this.audioLoader.loadAsync(url, this.onLoadProgressHandler);
+        const buffer = await this.audioLoader.loadAsync(url, this.onLoadHandler.bind(this));
         if (!buffer)
             return Promise.reject(new Error(`Failed to load audio ${name}`))
         this.list.push({ name, buffer });

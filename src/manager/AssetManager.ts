@@ -2,15 +2,11 @@ import { Event, LoadingManager, Object3D, Texture } from "three";
 import { AudioManager } from "./AudioManager";
 import { TextureManager } from "./TextureManager";
 import { WeaponManager } from "./WeaponManager";
+import { BaseManager } from "./Manager";
 
-export class AssetManager extends LoadingManager {
+export class AssetManager extends BaseManager<AssetManager>() {
 
-    static instance: AssetManager;
-
-    static getInstance(): AssetManager {
-        if (!this.instance) throw new Error('No Instance');
-        return this.instance;
-    }
+    static instance = new AssetManager();
 
     static getAudioBuffer(name: string): AudioBuffer {
         return this.getInstance().audioManager.getAudioBuffer(name);
@@ -28,31 +24,28 @@ export class AssetManager extends LoadingManager {
     private textureManager: TextureManager;
     private weaponManager: WeaponManager;
 
-    onLoadProgress?: (event: ProgressEvent<EventTarget>) => void;
+    private loadedData?: any = {};
 
-    constructor(
-        onLoadProgress?: (event: ProgressEvent<EventTarget>) => void
-    ) {
+    protected constructor() {
         super();
-        if (onLoadProgress)
-            this.onLoadProgress = onLoadProgress;
         this.audioManager = new AudioManager();
-        this.audioManager.setLoadingManager(this);
         this.textureManager = new TextureManager();
-        this.textureManager.setLoadingManager(this);
         this.weaponManager = new WeaponManager();
-        this.weaponManager.setLoadingManager(this);
-
-        this.audioManager.onLoadProgress = this.onLoadProgressHandler.bind(this);
-        this.textureManager.onLoadProgress = this.onLoadProgressHandler.bind(this);
-        this.weaponManager.onLoadProgress = this.onLoadProgressHandler.bind(this);
-
-        AssetManager.instance = this;
     }
 
-    onLoadProgressHandler(event: ProgressEvent<EventTarget>) {
-        if (this.onLoadProgress)
-            this.onLoadProgress(event);
+    set onLoad(f: any) {
+        this._onLoad = f;
+        this.audioManager.onLoad = this._onLoadHandler.bind(this);
+        this.textureManager.onLoad = this._onLoadHandler.bind(this);
+        this.weaponManager.onLoad = this._onLoadHandler.bind(this);
+    }
+
+    private _onLoadHandler(total: number, loaded: number, percentage: number): void {
+        this.loadedData[total] = loaded;
+        const t = Object.keys(this.loadedData).map(k => Number.parseFloat(k)).reduce((p, c) => p + c);
+        const v = Object.values<string>(this.loadedData).map((v) => Number.parseFloat(v)).reduce((p, c) => p + c);
+        if (this._onLoad)
+            this._onLoad(t, v, Math.ceil(v / t * 100))
     }
 
     async loadAllAsset() {

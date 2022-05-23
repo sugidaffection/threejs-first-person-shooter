@@ -105,15 +105,20 @@ class Main extends GameEvent {
   public static async main() {
 
     const loading = new LoadingScreen();
-    const assetManager = new AssetManager();
-    assetManager.onProgress = (url: string, loaded: number, total: number) => {
-      loading.progress = Math.ceil(loaded / total * 100);
+    const assetManager = AssetManager.getInstance();
+    // assetManager.onProgress = (url: string, loaded: number, total: number) => {
+    //   loading.progress = Math.ceil(loaded / total * 100);
+    //   loading.update();
+    // }
+
+    assetManager.onLoad = (total, loaded, percentage) => {
+      loading.progress = percentage;
       loading.update();
     }
+
     assetManager.loadAllAsset().then(() => {
       console.log('loaded all assets');
       loading.destroy();
-
       this.getInstance();
     });
   }
