@@ -1,6 +1,8 @@
 import { GameScene } from "../scenes/GameScene";
 import { LobbyScene } from "../scenes/LobbyScene";
 import { AudioListener, Clock, PerspectiveCamera, Scene, WebGLRenderer } from "three";
+import { CameraManager } from "./CameraManager";
+import { RendererManager } from "./RendererManager";
 
 interface CScene extends Scene {
     init(): void;
@@ -30,6 +32,7 @@ export class SceneManager {
         const gameScene = new GameScene(this.audioListener);
         gameScene.name = 'game-scene'
         this.scenes.push(lobbyScene, gameScene);
+        this.loadScene();
     }
 
     setRenderer(renderer: WebGLRenderer) {
@@ -51,9 +54,10 @@ export class SceneManager {
         if (this.currentScene)
             this.currentScene.update(dt)
 
-        const camera: PerspectiveCamera | undefined = <PerspectiveCamera>this.currentScene?.getObjectByName('camera');
+        const camera: PerspectiveCamera | undefined = <PerspectiveCamera>CameraManager.getInstance().get('camera');
+        const renderer: WebGLRenderer | undefined = <WebGLRenderer>RendererManager.getInstance().get('main');
         if (camera)
-            this.renderer?.render(<Scene>this.currentScene, camera);
+            renderer.render(<Scene>this.currentScene, camera);
     }
 
 }

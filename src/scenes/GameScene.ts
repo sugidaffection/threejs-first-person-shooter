@@ -1,6 +1,6 @@
 import { Ground } from "../objects/Ground";
 import { SkyBox } from "../objects/SkyBox";
-import { AudioListener, DirectionalLight, HemisphereLight, PerspectiveCamera, Quaternion, Scene, Vector3 } from "three";
+import { AudioListener, BoxBufferGeometry, CameraHelper, DirectionalLight, Group, HemisphereLight, Mesh, MeshStandardMaterial, PerspectiveCamera, Quaternion, Raycaster, Scene, Vector3 } from "three";
 import { Bullet } from "../objects/bullet";
 import { Player } from "../objects/player";
 import { FirstPersonController } from "../controllers/FirstPersonController";
@@ -13,9 +13,14 @@ export class GameScene extends Scene {
 
     private camera?: FirstPersonCamera;
     private audioListener: AudioListener;
+
+    private raycaster?: Raycaster;
+    private world: Group;
+    cameraHelper?: CameraHelper;
     constructor(audioListener: AudioListener) {
         super();
         this.audioListener = audioListener;
+        this.world = new Group();
     }
 
     init() {
@@ -38,12 +43,39 @@ export class GameScene extends Scene {
         this.add(ground);
 
         this.camera = new FirstPersonCamera();
-        this.camera.position.y = .1;
         this.camera.name = 'camera';
+        this.camera.position.y = .2;
+        this.cameraHelper = new CameraHelper(this.camera);
+        this.cameraHelper.position.copy(this.camera.position);
+        this.add(this.cameraHelper, this.camera);
+
         this.player = new Player(this.audioListener);
+        this.player.name = 'player';
         this.controller = new FirstPersonController(this.player, this.camera);
 
-        this.add(this.player, this.camera);
+        var boxGeometry = new BoxBufferGeometry(1, 1, 1);
+        boxGeometry.translate(0, 0, 0);
+
+        for (var i = 0; i < 10; i++) {
+
+            var boxMaterial = new MeshStandardMaterial({ color: Math.random() * 0xffffff, flatShading: false, vertexColors: false });
+
+            var mesh = new Mesh(boxGeometry, boxMaterial);
+            mesh.position.x = Math.random() * 100 - 80;
+            mesh.position.y = 0;
+            mesh.position.z = Math.random() * 100 - 80;
+            mesh.scale.x = 2;
+            mesh.scale.y = Math.random() * 5 + 2;
+            mesh.scale.z = 2;
+            mesh.castShadow = true;
+            mesh.receiveShadow = true;
+            mesh.updateMatrix();
+            mesh.matrixAutoUpdate = false;
+            this.world.add(mesh);
+        }
+
+
+        this.add(this.player, this.camera, this.world);
 
         Bullet.scene = this;
     }
@@ -52,6 +84,7 @@ export class GameScene extends Scene {
         this.camera?.update(dt);
         this.player?.update(dt);
         this.controller?.update(dt);
+        this.cameraHelper?.update();
         Bullet.update(dt);
     }
 }

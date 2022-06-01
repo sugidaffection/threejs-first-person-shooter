@@ -40,7 +40,7 @@ canvas {
 }
 
 .wrapper {
-    @apply relative;
+    @apply relative flex;
 }
 
 .ammoPanel {

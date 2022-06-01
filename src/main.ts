@@ -1,11 +1,14 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { PCFSoftShadowMap, WebGLRenderer } from 'three';
+import { CameraHelper, PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer } from 'three';
 import { GameEvent } from './events/GameEvent';
 import { AssetManager } from './manager/AssetManager';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { MouseInput } from './inputs/MouseInput';
 import { SceneManager } from './manager/SceneManager';
 import { Input } from './inputs/Input';
+import { CameraManager } from './manager/CameraManager';
+import { FirstPersonCamera } from './cameras/FirstPersonCamera';
+import { RendererManager } from './manager/RendererManager';
 
 const [WIDTH, HEIGHT] = [640, 480];
 
@@ -25,8 +28,9 @@ class Main extends GameEvent {
   private static instance: Main;
   private readonly world: World = new World()
   private readonly canvas: HTMLElement = getCanvas;
-  private readonly renderer: WebGLRenderer;
+  private readonly rendererManager: RendererManager = RendererManager.getInstance();
   private readonly sceneManager: SceneManager;
+  private readonly camera: PerspectiveCamera;
   constructor() {
     super();
     this.canvas.addEventListener('click', async () => {
@@ -37,11 +41,18 @@ class Main extends GameEvent {
       Input.getInstance().setPointerLock(document.pointerLockElement == this.canvas);
     })
 
-    this.renderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
+    let mainRenderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
+    this.rendererManager.addRenderer('main', mainRenderer);
+    let renderer2 = new WebGLRenderer({ antialias: false });
+    document.querySelector('.wrapper')?.appendChild(renderer2.domElement);
+    this.rendererManager.addRenderer('renderer2', renderer2);
     this.sceneManager = SceneManager.getInstance();
-    this.sceneManager.setRenderer(this.renderer);
     this.setupRenderer();
-    this.updateCameraView();
+
+    this.camera = new FirstPersonCamera();
+    this.camera.name = 'world-cam';
+    this.camera.position.y = 2;
+    this.camera.position.z = 3;
 
     // this.setUI();
 
@@ -56,23 +67,22 @@ class Main extends GameEvent {
     document.querySelector('main .wrapper')?.append(ammo);
   }
 
-  updateCameraView() {
-    let aspectRatio = WIDTH / HEIGHT;
-    if (HEIGHT > WIDTH) aspectRatio = HEIGHT / WIDTH;
-  }
-
   setupRenderer(): void {
-    this.renderer.setClearColor(0xffffff);
-    this.renderer.shadowMap.enabled = false;
-    this.renderer.shadowMap.type = PCFSoftShadowMap;
-    this.renderer.setSize(WIDTH, HEIGHT);
-    this.renderer.setPixelRatio(window.devicePixelRatio * .8);
+    this.rendererManager.getAll().forEach(renderer => {
+      renderer.setClearColor(0xffffff);
+      renderer.shadowMap.enabled = false;
+      renderer.shadowMap.type = PCFSoftShadowMap;
+      let aspectRatio = renderer.domElement.width / renderer.domElement.height;
+      renderer.setPixelRatio(aspectRatio);
+    })
   }
 
   startLoop(): void {
-    this.renderer.setAnimationLoop(() => {
-      this.update();
-    });
+    let renderer = this.rendererManager.get('main');
+    if (renderer)
+      renderer.setAnimationLoop(() => {
+        this.update();
+      });
   }
 
   setupWorld(): void {
@@ -103,6 +113,11 @@ class Main extends GameEvent {
   update(): void {
     this.sceneManager.update();
     this.input.update();
+    let player = this.sceneManager.currentScene!.getObjectByName('player');
+    this.camera.lookAt(player!.position);
+    let renderer = this.rendererManager.get('renderer2');
+    if (renderer)
+      renderer.render(this.sceneManager.currentScene!, this.camera);
   }
 
   public static async main() {

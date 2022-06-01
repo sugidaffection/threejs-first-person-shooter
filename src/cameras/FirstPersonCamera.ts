@@ -1,5 +1,6 @@
 import { Euler, MathUtils, PerspectiveCamera, Vec2, Vector2 } from "three";
 import { Input } from "../inputs/Input";
+import { CameraManager } from "../manager/CameraManager";
 
 export class FirstPersonCamera extends PerspectiveCamera {
 
@@ -12,9 +13,11 @@ export class FirstPersonCamera extends PerspectiveCamera {
     constructor() {
         super(75, 1, .1, 1000);
         this.euler = new Euler(0, 0, 0, 'YXZ');
-        this.maxPitch = MathUtils.degToRad(90);
-        this.horizontalSens = 1.0;
-        this.verticalSens = 1.0;
+        this.maxPitch = MathUtils.degToRad(45);
+        this.horizontalSens = 3.0;
+        this.verticalSens = 2.0;
+
+        CameraManager.getInstance().addCamera(this);
     }
 
     update(dt: number) {
@@ -28,6 +31,7 @@ export class FirstPersonCamera extends PerspectiveCamera {
         this.euler.x = MathUtils.clamp(this.euler.x, -this.maxPitch, this.maxPitch);
 
         this.quaternion.setFromEuler(this.euler, true);
+
     }
 
 }

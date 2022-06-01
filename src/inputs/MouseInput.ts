@@ -15,7 +15,7 @@ export class MouseInput {
     }
 
     inputEventHandler(e: MouseEvent) {
-        if (['click', 'mousedown', 'mouseup'].includes(e.type)) {
+        if (['mousedown', 'mouseup'].includes(e.type)) {
             this.button = e.button;
             this.buttonType = e.type;
         }
@@ -31,7 +31,7 @@ export class MouseInput {
     }
 
     getInput(name: MOUSE) {
-        return this.button == name && this.buttonType == 'click';
+        return this.button == name && this.buttonType == 'mousedown';
     }
 
     getPress(name: MOUSE) {

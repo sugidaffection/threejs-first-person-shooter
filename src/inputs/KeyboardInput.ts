@@ -1,5 +1,8 @@
 interface InputKeys {
-    [key: string]: string;
+    [key: string]: {
+        active: boolean,
+        isPressed: boolean
+    };
 }
 export class KeyboardInput {
     private keys: InputKeys;
@@ -9,7 +12,11 @@ export class KeyboardInput {
     }
 
     inputEventHandler(e: KeyboardEvent) {
-        this.keys[e.code] = e.type;
+        this.keys[e.code] = {
+            active: ['keydown', 'keypress'].includes(e.type) || e.type != 'keyup',
+            isPressed: e.type == 'keypress'
+        };
+
     }
 
     private getInputKey(name: string) {
@@ -19,10 +26,16 @@ export class KeyboardInput {
     }
 
     getInput(name: string) {
-        return this.getInputKey(name) == 'keydown';
+        let key = this.getInputKey(name);
+        if (key)
+            return key.active;
+        return false;
     }
 
     getPress(name: string) {
-        return this.getInputKey(name) == 'keypress';
+        let key = this.getInputKey(name);
+        if (key)
+            return key.isPressed;
+        return false;
     }
 }

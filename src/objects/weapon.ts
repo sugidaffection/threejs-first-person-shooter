@@ -1,5 +1,5 @@
 import { AssetManager } from "../manager/AssetManager";
-import { AudioListener, BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PositionalAudio, Quaternion, Ray, Vector3 } from "three";
+import { AudioListener, BoxGeometry, Camera, Mesh, MeshBasicMaterial, Object3D, PositionalAudio, Quaternion, Ray, Vector3 } from "three";
 import { Bullet } from "./bullet";
 
 export enum WeaponState {
@@ -51,7 +51,7 @@ export class Weapon extends Object3D {
         const geo = new BoxGeometry();
         const mat = new MeshBasicMaterial({ color: 0xFF0000 });
         const mesh = new Mesh(geo, mat);
-        // this.emitter.add(mesh);
+        this.emitter.add(mesh);
         this.add(this.emitter);
 
         const fireAudioBuffer = AssetManager.getAudioBuffer('fire');
@@ -73,17 +73,15 @@ export class Weapon extends Object3D {
         return this.leftAmmo;
     }
 
-    fire() {
+    fire(direction: Vector3) {
         if (this.currentAmmo > 0 && this.state == WeaponState.IDLE) {
             if (this.lt > this.fireRate) {
                 this.state = WeaponState.FIRE;
-                const quat = this.parent!.getWorldQuaternion(new Quaternion());
-                const position = this.emitter.getWorldPosition(new Vector3());
 
                 Bullet.create(
                     this.uuid.toString(),
-                    position,
-                    quat,
+                    this.emitter.getWorldPosition(new Vector3()),
+                    direction,
                     this.fireSpeed
                 );
 

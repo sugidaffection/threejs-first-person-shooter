@@ -13,8 +13,9 @@ export class Bullet extends Object3D {
   private spawnPosition: Vector3;
 
   private speed: number;
+  private direction: Vector3;
 
-  constructor(owner: string, position: Vector3, quat: Quaternion, speed: number) {
+  constructor(owner: string, position: Vector3, direction: Vector3, speed: number) {
     super()
     this.name = owner;
 
@@ -33,8 +34,8 @@ export class Bullet extends Object3D {
     this.position.copy(position);
     this.spawnPosition = new Vector3().copy(this.position);
     // Bullet.world.addBody(this.body);
-    this.quaternion.copy(quat);
-
+    // this.quaternion.copy(quat);
+    this.direction = direction;
   }
 
   get isCollide(): boolean {
@@ -47,15 +48,16 @@ export class Bullet extends Object3D {
 
   update(dt: number) {
 
-    this.translateZ(-this.speed * dt);
+    this.position.addScaledVector(this.direction, this.speed * dt);
+    // this.translateZ(-this.speed * dt);
     const distance = this.position.distanceTo(this.spawnPosition);
     if (distance > this.range || this.isCollide) {
       Bullet.destroy(this);
     }
   }
 
-  public static create(owner: string, position: Vector3, quat: Quaternion, speed: number): void {
-    const bullet = new Bullet(owner, position, quat, speed);
+  public static create(owner: string, position: Vector3, direction: Vector3, speed: number): void {
+    const bullet = new Bullet(owner, position, direction, speed);
     Bullet.bullets.push(bullet);
 
     // bullet.body.addEventListener('collide', () => {

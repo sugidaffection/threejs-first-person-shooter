@@ -12,8 +12,15 @@ import {
   Object3D,
   PerspectiveCamera,
   Euler,
+  Raycaster,
+  Vector3,
+  Intersection,
+  Camera,
+  BoxHelper,
 } from 'three';
+import { FirstPersonCamera } from '../cameras/FirstPersonCamera';
 import { AssetManager } from '../manager/AssetManager';
+import { CameraManager } from '../manager/CameraManager';
 import { Kriss, UMP47, Weapon } from './weapon';
 
 export interface PlayerJSON {
@@ -59,13 +66,18 @@ export class Player extends Object3D {
   private footstepAudio?: PositionalAudio;
   private weapon?: Weapon;
 
-  private camera?: PerspectiveCamera;
+  private camera: Camera;
+  private raycaster: Raycaster;
 
   private pBody: Object3D;
   private hand: Object3D;
+
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
+    this.camera = new FirstPersonCamera();
+    this.raycaster = new Raycaster();
+
     this.add(this.audioListener);
     this.setFootstepAudio(AssetManager.getAudioBuffer('footstep'));
 
@@ -84,7 +96,9 @@ export class Player extends Object3D {
 
     this.pBody.add(this.hand);
 
-    this.add(mesh, this.pBody);
+    let meshHelper = new BoxHelper(mesh);
+
+    this.add(meshHelper, this.pBody);
 
     const shape = new Sphere(.4);
     if (body !== false) {
@@ -105,14 +119,7 @@ export class Player extends Object3D {
     return this.hand;
   }
 
-  setCamera(camera: PerspectiveCamera) {
-    this.camera = camera;
-    this.camera.rotation.set(0, 0, 0);
-    this.camera.position.set(0, 0.1, 0);
-    this.pBody.add(this.camera);
-  }
-
-  getCamera(): PerspectiveCamera | undefined {
+  getCamera(): Camera {
     return this.camera;
   }
 
@@ -161,24 +168,33 @@ export class Player extends Object3D {
   }
 
   fire(): void {
-    this.weapon?.fire();
+    let camera = CameraManager.getInstance().get('camera')!;
+    let cameraPos = camera.getWorldPosition(new Vector3());
+    let cameraDir = camera.getWorldDirection(new Vector3());
+
+    this.raycaster.set(cameraPos, cameraDir);
+    let intersects: Intersection[] = [];
+    if (this.parent)
+      intersects = this.raycaster.intersectObjects(this.parent?.children)
+    // if (intersects.length > 0)
+    this.weapon?.fire(cameraDir);
   }
 
-  zoomIn() {
-    if (this.weapon && this.camera) {
-      this.weapon.position.x = .0535;
-      this.camera.zoom = 5;
-      this.camera.updateProjectionMatrix();
-    }
-  }
+  // zoomIn() {
+  //   if (this.weapon && this.camera) {
+  //     this.weapon.position.x = .0535;
+  //     this.camera.zoom = 5;
+  //     this.camera.updateProjectionMatrix();
+  //   }
+  // }
 
-  zoomOut() {
-    if (this.weapon && this.camera) {
-      this.weapon.position.x = .2;
-      this.camera.zoom = 1;
-      this.camera.updateProjectionMatrix();
-    }
-  }
+  // zoomOut() {
+  //   if (this.weapon && this.camera) {
+  //     this.weapon.position.x = .2;
+  //     this.camera.zoom = 1;
+  //     this.camera.updateProjectionMatrix();
+  //   }
+  // }
 
   reload() {
     this.weapon?.reload();
