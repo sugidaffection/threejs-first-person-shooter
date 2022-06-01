@@ -5,6 +5,7 @@ import { AssetManager } from './manager/AssetManager';
 import { LoadingScreen } from './screens/LoadingScreen';
 import { MouseInput } from './inputs/MouseInput';
 import { SceneManager } from './manager/SceneManager';
+import { Input } from './inputs/Input';
 
 const [WIDTH, HEIGHT] = [640, 480];
 
@@ -32,6 +33,9 @@ class Main extends GameEvent {
       // await this.canvas.requestFullscreen();
       this.canvas.requestPointerLock();
     });
+    addEventListener('pointerlockchange', (e) => {
+      Input.getInstance().setPointerLock(document.pointerLockElement == this.canvas);
+    })
 
     this.renderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
     this.sceneManager = SceneManager.getInstance();
@@ -55,7 +59,6 @@ class Main extends GameEvent {
   updateCameraView() {
     let aspectRatio = WIDTH / HEIGHT;
     if (HEIGHT > WIDTH) aspectRatio = HEIGHT / WIDTH;
-    this.sceneManager.updateCameraAspectRatio(aspectRatio)
   }
 
   setupRenderer(): void {
@@ -99,7 +102,7 @@ class Main extends GameEvent {
 
   update(): void {
     this.sceneManager.update();
-    MouseInput.reset();
+    this.input.update();
   }
 
   public static async main() {

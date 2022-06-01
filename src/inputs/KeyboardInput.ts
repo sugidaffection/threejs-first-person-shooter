@@ -1,10 +1,28 @@
+interface InputKeys {
+    [key: string]: string;
+}
 export class KeyboardInput {
-    static LEFT: boolean = false;
-    static RIGHT: boolean = false;
-    static FORWARD: boolean = false;
-    static BACK: boolean = false;
-    static FIRE: boolean = false;
-    static JUMP: boolean = false;
-    static CROUCH: boolean = false;
-    static RELOAD: boolean = false;
+    private keys: InputKeys;
+
+    constructor() {
+        this.keys = {};
+    }
+
+    inputEventHandler(e: KeyboardEvent) {
+        this.keys[e.code] = e.type;
+    }
+
+    private getInputKey(name: string) {
+        if (Object.keys(this.keys).some(key => key == name))
+            return this.keys[name];
+        return false;
+    }
+
+    getInput(name: string) {
+        return this.getInputKey(name) == 'keydown';
+    }
+
+    getPress(name: string) {
+        return this.getInputKey(name) == 'keypress';
+    }
 }

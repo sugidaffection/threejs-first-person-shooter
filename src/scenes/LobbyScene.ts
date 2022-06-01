@@ -3,9 +3,9 @@ import { AudioListener, DoubleSide, Mesh, MeshBasicMaterial, PerspectiveCamera, 
 export class LobbyScene extends Scene {
     private camera: PerspectiveCamera;
     private audioListener: AudioListener;
-    constructor(camera: PerspectiveCamera, audioListener: AudioListener) {
+    constructor(audioListener: AudioListener) {
         super();
-        this.camera = camera;
+        this.camera = new PerspectiveCamera();
         this.audioListener = audioListener;
     }
 

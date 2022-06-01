@@ -19,19 +19,15 @@ export class SceneManager {
     private scenes: Scene[] = [];
     private audioListener: AudioListener;
     private clock: Clock;
-    private camera: PerspectiveCamera;
     private renderer?: WebGLRenderer;
     currentScene?: CScene;
     constructor() {
         this.audioListener = new AudioListener();
         this.clock = new Clock();
-        this.camera = new PerspectiveCamera(75, 1, .1, 1000);
-        this.camera.position.set(0, 0, 2);
-        this.camera.rotation.set(0, .5, 0);
 
-        const lobbyScene = new LobbyScene(this.camera, this.audioListener);
+        const lobbyScene = new LobbyScene(this.audioListener);
         lobbyScene.name = 'lobby-scene';
-        const gameScene = new GameScene(this.camera, this.audioListener);
+        const gameScene = new GameScene(this.audioListener);
         gameScene.name = 'game-scene'
         this.scenes.push(lobbyScene, gameScene);
     }
@@ -48,11 +44,6 @@ export class SceneManager {
         return scene;
     }
 
-    updateCameraAspectRatio(aspectRatio: number) {
-        this.camera.aspect = aspectRatio;
-        this.camera.updateProjectionMatrix();
-    }
-
     update() {
         if (!this.currentScene)
             this.loadScene();
@@ -60,7 +51,9 @@ export class SceneManager {
         if (this.currentScene)
             this.currentScene.update(dt)
 
-        this.renderer?.render(<Scene>this.currentScene, this.camera);
+        const camera: PerspectiveCamera | undefined = <PerspectiveCamera>this.currentScene?.getObjectByName('camera');
+        if (camera)
+            this.renderer?.render(<Scene>this.currentScene, camera);
     }
 
 }

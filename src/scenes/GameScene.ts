@@ -11,11 +11,10 @@ export class GameScene extends Scene {
     private player?: Player;
     private controller?: FirstPersonController;
 
-    private camera: PerspectiveCamera;
+    private camera?: FirstPersonCamera;
     private audioListener: AudioListener;
-    constructor(camera: PerspectiveCamera, audioListener: AudioListener) {
+    constructor(audioListener: AudioListener) {
         super();
-        this.camera = camera;
         this.audioListener = audioListener;
     }
 
@@ -38,26 +37,21 @@ export class GameScene extends Scene {
         this.add(sky);
         this.add(ground);
 
-        const player = new Player(this.audioListener);
-        const fpsCam = new FirstPersonCamera();
-        player.setCamera(fpsCam);
-        this.player = player;
-        this.controller = new FirstPersonController(player, fpsCam);
+        this.camera = new FirstPersonCamera();
+        this.camera.position.y = .1;
+        this.camera.name = 'camera';
+        this.player = new Player(this.audioListener);
+        this.controller = new FirstPersonController(this.player, this.camera);
 
-        this.add(player);
+        this.add(this.player, this.camera);
 
         Bullet.scene = this;
     }
 
     update(dt) {
-        this.controller?.update(dt);
+        this.camera?.update(dt);
         this.player?.update(dt);
-
-        const camera = this.player?.getCamera()
-        if (camera) {
-            this.camera.position.copy(camera.getWorldPosition(new Vector3()));
-            this.camera.quaternion.copy(camera.getWorldQuaternion(new Quaternion()));
-        }
+        this.controller?.update(dt);
         Bullet.update(dt);
     }
 }
