@@ -1,13 +1,11 @@
-import { Group, PerspectiveCamera } from "three";
+import { PerspectiveCamera } from "three";
 import { FirstPersonCamera } from "../cameras/FirstPersonCamera";
-import { BaseManager } from "./Manager";
+import { SingletonFn } from "./Manager";
 
-export class CameraManager extends BaseManager<CameraManager>() {
-    static instance: CameraManager = new CameraManager();
+export class CameraManager {
     private cameras: (PerspectiveCamera | FirstPersonCamera)[] = [];
 
     constructor() {
-        super();
         this.cameras = []
     }
 
@@ -22,4 +20,10 @@ export class CameraManager extends BaseManager<CameraManager>() {
     get(name: string): PerspectiveCamera | FirstPersonCamera | undefined {
         return this.cameras.find(c => c.name == name);
     }
+
+    static addCamera(camera: PerspectiveCamera | FirstPersonCamera) {
+        cameraManager.getInstance().addCamera(camera);
+    }
 }
+
+export const cameraManager = SingletonFn(CameraManager);

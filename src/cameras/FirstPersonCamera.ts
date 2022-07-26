@@ -17,7 +17,7 @@ export class FirstPersonCamera extends PerspectiveCamera {
         this.horizontalSens = 3.0;
         this.verticalSens = 2.0;
 
-        CameraManager.getInstance().addCamera(this);
+        CameraManager.addCamera(this);
     }
 
     update(dt: number) {

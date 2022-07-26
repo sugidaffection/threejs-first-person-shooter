@@ -1,8 +1,9 @@
 import { GameScene } from "../scenes/GameScene";
 import { LobbyScene } from "../scenes/LobbyScene";
 import { AudioListener, Clock, PerspectiveCamera, Scene, WebGLRenderer } from "three";
-import { CameraManager } from "./CameraManager";
-import { RendererManager } from "./RendererManager";
+import { cameraManager } from "./CameraManager";
+import { rendererManager } from "./RendererManager";
+import { SingletonFn } from "./Manager";
 
 interface CScene extends Scene {
     init(): void;
@@ -11,19 +12,13 @@ interface CScene extends Scene {
 
 export class SceneManager {
 
-    private static instance: SceneManager;
-    static getInstance(): SceneManager {
-        if (!this.instance)
-            this.instance = new SceneManager();
-        return this.instance;
-    }
-
     private scenes: Scene[] = [];
     private audioListener: AudioListener;
     private clock: Clock;
     private renderer?: WebGLRenderer;
     currentScene?: CScene;
-    constructor() {
+    constructor(
+    ) {
         this.audioListener = new AudioListener();
         this.clock = new Clock();
 
@@ -54,10 +49,12 @@ export class SceneManager {
         if (this.currentScene)
             this.currentScene.update(dt)
 
-        const camera: PerspectiveCamera | undefined = <PerspectiveCamera>CameraManager.getInstance().get('camera');
-        const renderer: WebGLRenderer | undefined = <WebGLRenderer>RendererManager.getInstance().get('main');
+        const camera: PerspectiveCamera | undefined = <PerspectiveCamera>cameraManager.getInstance().get('camera');
+        const renderer: WebGLRenderer | undefined = <WebGLRenderer>rendererManager.getInstance().get('main');
         if (camera)
             renderer.render(<Scene>this.currentScene, camera);
     }
 
 }
+
+export const sceneManager = SingletonFn(SceneManager);

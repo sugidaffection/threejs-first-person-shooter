@@ -1,15 +1,14 @@
-import { Group, LoadingManager, Object3D, ObjectLoader } from "three";
+import { Group, Object3D } from "three";
 import { MTLLoader } from "three/examples/jsm/loaders/MTLLoader";
 import { OBJLoader } from "three/examples/jsm/loaders/OBJLoader";
-import { GLTF, GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader";
-import { BaseManager } from "./Manager";
+import { BaseLoadingManager, SingletonFn } from "./Manager";
 
 interface TextureItem {
     name: string,
     obj: Group | Object3D
 }
 
-export class WeaponManager extends BaseManager<WeaponManager>() {
+export class WeaponManager extends BaseLoadingManager {
     private list: Array<TextureItem>;
     private mtlLoader: MTLLoader;
     private objLoader: OBJLoader;
@@ -59,3 +58,5 @@ export class WeaponManager extends BaseManager<WeaponManager>() {
         return weapon.clone();
     }
 }
+
+export const weaponManager = SingletonFn(WeaponManager);

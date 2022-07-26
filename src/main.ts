@@ -1,14 +1,13 @@
 import { ContactMaterial, GSSolver, Material, NaiveBroadphase, Vec3, World } from 'cannon-es';
-import { CameraHelper, PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer } from 'three';
+import { PCFSoftShadowMap, PerspectiveCamera, WebGLRenderer } from 'three';
 import { GameEvent } from './events/GameEvent';
 import { AssetManager } from './manager/AssetManager';
 import { LoadingScreen } from './screens/LoadingScreen';
-import { MouseInput } from './inputs/MouseInput';
-import { SceneManager } from './manager/SceneManager';
+import { sceneManager, SceneManager } from './manager/SceneManager';
 import { Input } from './inputs/Input';
-import { CameraManager } from './manager/CameraManager';
 import { FirstPersonCamera } from './cameras/FirstPersonCamera';
-import { RendererManager } from './manager/RendererManager';
+import { rendererManager, RendererManager } from './manager/RendererManager';
+import { SingletonFn } from './manager/Manager';
 
 const [WIDTH, HEIGHT] = [640, 480];
 
@@ -18,21 +17,17 @@ const getCanvas = document.querySelector('canvas') || (() => {
   return canvas;
 })()
 
-class Main extends GameEvent {
-
-  static getInstance(): Main {
-    if (!this.instance) this.instance = new Main();
-    return this.instance;
-  }
-
-  private static instance: Main;
-  private readonly world: World = new World()
+class App extends GameEvent {
+  private world: World = new World();
   private readonly canvas: HTMLElement = getCanvas;
-  private readonly rendererManager: RendererManager = RendererManager.getInstance();
-  private readonly sceneManager: SceneManager;
   private readonly camera: PerspectiveCamera;
-  constructor() {
+  private readonly rendererManager: RendererManager;
+  private readonly sceneManager: SceneManager;
+  constructor(
+  ) {
     super();
+    this.rendererManager = rendererManager.getInstance();
+    this.sceneManager = sceneManager.getInstance();
     this.canvas.addEventListener('click', async () => {
       // await this.canvas.requestFullscreen();
       this.canvas.requestPointerLock();
@@ -46,7 +41,6 @@ class Main extends GameEvent {
     let renderer2 = new WebGLRenderer({ antialias: false });
     document.querySelector('.wrapper')?.appendChild(renderer2.domElement);
     this.rendererManager.addRenderer('renderer2', renderer2);
-    this.sceneManager = SceneManager.getInstance();
     this.setupRenderer();
 
     this.camera = new FirstPersonCamera();
@@ -86,6 +80,8 @@ class Main extends GameEvent {
   }
 
   setupWorld(): void {
+    this.world = new World();
+
     this.world.broadphase = new NaiveBroadphase();
     this.world.gravity = new Vec3(0, -20, 0);
     this.world.quatNormalizeSkip = 0;
@@ -120,10 +116,13 @@ class Main extends GameEvent {
       renderer.render(this.sceneManager.currentScene!, this.camera);
   }
 
+}
+
+class Main extends SingletonFn(App) {
   public static async main() {
 
     const loading = new LoadingScreen();
-    const assetManager = AssetManager.getInstance();
+    const assetManager = new AssetManager();
     // assetManager.onProgress = (url: string, loaded: number, total: number) => {
     //   loading.progress = Math.ceil(loaded / total * 100);
     //   loading.update();
@@ -140,6 +139,6 @@ class Main extends GameEvent {
       this.getInstance();
     });
   }
-}
+};
 
 export { Main };

@@ -1,12 +1,12 @@
-import { LoadingManager, Texture, TextureLoader } from "three";
-import { BaseManager } from "./Manager";
+import { Texture, TextureLoader } from "three";
+import { BaseLoadingManager, SingletonFn } from "./Manager";
 
 interface TextureItem {
     name: string,
     texture: Texture
 }
 
-class TextureManager extends BaseManager<TextureManager>() {
+export class TextureManager extends BaseLoadingManager {
 
     private list: Array<TextureItem>;
     private textureLoader: TextureLoader;
@@ -40,4 +40,4 @@ class TextureManager extends BaseManager<TextureManager>() {
 
 }
 
-export { TextureManager };
+export const textureManager = SingletonFn(TextureManager);

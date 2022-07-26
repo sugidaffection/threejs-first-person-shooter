@@ -19,8 +19,8 @@ import {
   BoxHelper,
 } from 'three';
 import { FirstPersonCamera } from '../cameras/FirstPersonCamera';
-import { AssetManager } from '../manager/AssetManager';
-import { CameraManager } from '../manager/CameraManager';
+import { assetManager } from '../manager/AssetManager';
+import { cameraManager } from '../manager/CameraManager';
 import { Kriss, UMP47, Weapon } from './weapon';
 
 export interface PlayerJSON {
@@ -79,7 +79,7 @@ export class Player extends Object3D {
     this.raycaster = new Raycaster();
 
     this.add(this.audioListener);
-    this.setFootstepAudio(AssetManager.getAudioBuffer('footstep'));
+    this.setFootstepAudio(assetManager.getAudioBuffer('footstep'));
 
     this.hand = new Object3D();
     this.pBody = new Object3D();
@@ -168,7 +168,7 @@ export class Player extends Object3D {
   }
 
   fire(): void {
-    let camera = CameraManager.getInstance().get('camera')!;
+    let camera = cameraManager.getInstance().get('camera')!;
     let cameraPos = camera.getWorldPosition(new Vector3());
     let cameraDir = camera.getWorldDirection(new Vector3());
 

@@ -1,12 +1,12 @@
 import { WebGLRenderer } from "three";
-import { BaseManager } from "./Manager";
+import { BaseLoadingManager, SingletonFn } from "./Manager";
 
 interface RendererObject {
     name: string,
     renderer: WebGLRenderer
 }
 
-export class RendererManager extends BaseManager<RendererManager>() {
+export class RendererManager extends BaseLoadingManager {
 
     protected static instance: RendererManager = new RendererManager();
 
@@ -33,3 +33,5 @@ export class RendererManager extends BaseManager<RendererManager>() {
     }
 
 }
+
+export const rendererManager = SingletonFn(RendererManager);

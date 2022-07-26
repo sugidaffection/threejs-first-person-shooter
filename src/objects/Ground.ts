@@ -1,5 +1,5 @@
 import { FrontSide, Mesh, MeshPhongMaterial, NearestFilter, Object3D, PlaneGeometry, RepeatWrapping, Vector3 } from "three";
-import { AssetManager } from "../manager/AssetManager";
+import { assetManager } from "../manager/AssetManager";
 
 export class Ground extends Object3D {
 
@@ -7,7 +7,7 @@ export class Ground extends Object3D {
         super();
 
         const material = new MeshPhongMaterial({ shadowSide: FrontSide });
-        material.map = AssetManager.getTexture('floor');
+        material.map = assetManager.getTexture('floor');
         material.map.wrapS = material.map.wrapT = RepeatWrapping;
         material.map.repeat.set(width, height);
         material.map.magFilter = NearestFilter;

@@ -1,36 +1,22 @@
-import { Event, LoadingManager, Object3D, Texture } from "three";
-import { AudioManager } from "./AudioManager";
-import { TextureManager } from "./TextureManager";
-import { WeaponManager } from "./WeaponManager";
-import { BaseManager } from "./Manager";
+import { audioManager, AudioManager } from "./AudioManager";
+import { textureManager, TextureManager } from "./TextureManager";
+import { weaponManager, WeaponManager } from "./WeaponManager";
+import { BaseLoadingManager, SingletonFn } from "./Manager";
+import { Object3D, Texture } from "three";
 
-export class AssetManager extends BaseManager<AssetManager>() {
-
-    static instance = new AssetManager();
-
-    static getAudioBuffer(name: string): AudioBuffer {
-        return this.getInstance().audioManager.getAudioBuffer(name);
-    }
-
-    static getWeapon(name: string): Object3D<Event> {
-        return this.getInstance().weaponManager.cloneWeapon(name);
-    }
-
-    static getTexture(name: string): Texture {
-        return this.getInstance().textureManager.cloneTexture(name);
-    }
-
-    private audioManager: AudioManager;
-    private textureManager: TextureManager;
-    private weaponManager: WeaponManager;
+export class AssetManager extends BaseLoadingManager {
 
     private loadedData?: any = {};
+    audioManager: AudioManager;
+    textureManager: TextureManager;
+    weaponManager: WeaponManager;
 
-    protected constructor() {
+    constructor(
+    ) {
         super();
-        this.audioManager = new AudioManager();
-        this.textureManager = new TextureManager();
-        this.weaponManager = new WeaponManager();
+        this.audioManager = audioManager.getInstance();
+        this.textureManager = textureManager.getInstance();
+        this.weaponManager = weaponManager.getInstance();
     }
 
     set onLoad(f: any) {
@@ -67,5 +53,18 @@ export class AssetManager extends BaseManager<AssetManager>() {
         ])
     }
 
-
 }
+
+export class assetManager extends SingletonFn(AssetManager) {
+    static getWeapon(name: string): Object3D {
+        return this.getInstance().weaponManager.getWeapon(name);
+    }
+
+    static getAudioBuffer(name: string): AudioBuffer {
+        return this.getInstance().audioManager.getAudioBuffer(name);
+    }
+
+    static getTexture(name: string): Texture {
+        return this.getInstance().textureManager.getTexture(name);
+    }
+};

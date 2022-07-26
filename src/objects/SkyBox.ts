@@ -1,11 +1,11 @@
 import { BoxGeometry, DoubleSide, Mesh, MeshBasicMaterial, Object3D, RepeatWrapping } from "three";
-import { AssetManager } from "../manager/AssetManager";
+import { assetManager } from "../manager/AssetManager";
 
 export class SkyBox extends Object3D {
 
     constructor() {
         super();
-        let texture = AssetManager.getTexture('skybox');
+        let texture = assetManager.getTexture('skybox');
         texture.wrapS = RepeatWrapping;
         texture.wrapT = RepeatWrapping;
         texture.repeat.set(1 / 4, 1 / 3);

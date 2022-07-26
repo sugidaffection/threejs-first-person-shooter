@@ -1,5 +1,5 @@
-import { AssetManager } from "../manager/AssetManager";
-import { AudioListener, BoxGeometry, Camera, Mesh, MeshBasicMaterial, Object3D, PositionalAudio, Quaternion, Ray, Vector3 } from "three";
+import { assetManager } from "../manager/AssetManager";
+import { AudioListener, BoxGeometry, Mesh, MeshBasicMaterial, Object3D, PositionalAudio, Vector3 } from "three";
 import { Bullet } from "./bullet";
 
 export enum WeaponState {
@@ -54,12 +54,12 @@ export class Weapon extends Object3D {
         this.emitter.add(mesh);
         this.add(this.emitter);
 
-        const fireAudioBuffer = AssetManager.getAudioBuffer('fire');
+        const fireAudioBuffer = assetManager.getAudioBuffer('fire');
         const positionalFireAudio = new PositionalAudio(this.audioListener);
         this.fireAudio = positionalFireAudio.setBuffer(fireAudioBuffer);
         this.add(this.fireAudio);
 
-        const reloadAudioBuffer = AssetManager.getAudioBuffer('reload');
+        const reloadAudioBuffer = assetManager.getAudioBuffer('reload');
         const positionalReloadAudio = new PositionalAudio(this.audioListener);
         this.reloadAudio = positionalReloadAudio.setBuffer(reloadAudioBuffer);
         this.add(this.reloadAudio);
@@ -139,7 +139,7 @@ export class UMP47 extends Weapon {
         super(audioListener);
         this.fireRate = 0.1;
         this.fireSpeed = 10;
-        const object = AssetManager.getWeapon('ump47');
+        const object = assetManager.getWeapon('ump47');
         this.add(object);
         this.emitter.position.set(-1, 2.5, -1);
     }
@@ -150,7 +150,7 @@ export class Kriss extends Weapon {
         super(audioListener);
         this.fireRate = 0.1;
         this.fireSpeed = 10;
-        const object = AssetManager.getWeapon('kriss');
+        const object = assetManager.getWeapon('kriss');
         this.add(object);
         this.emitter.position.set(4, 2.5, -1.7);
     }

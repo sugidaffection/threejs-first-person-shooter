@@ -1,12 +1,12 @@
-import { AudioLoader, LoadingManager } from "three";
-import { BaseManager } from "./Manager";
+import { AudioLoader } from "three";
+import { BaseLoadingManager, SingletonFn } from "./Manager";
 
 interface AudioItem {
     name: string,
     buffer: AudioBuffer
 }
 
-class AudioManager extends BaseManager<AudioManager>() {
+export class AudioManager extends BaseLoadingManager {
 
     private list: Array<AudioItem>;
     private audioLoader: AudioLoader;
@@ -35,4 +35,4 @@ class AudioManager extends BaseManager<AudioManager>() {
 
 }
 
-export { AudioManager };
+export const audioManager = SingletonFn(AudioManager);
