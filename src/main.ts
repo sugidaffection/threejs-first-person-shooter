@@ -36,9 +36,9 @@ class App extends GameEvent {
       Input.getInstance().setPointerLock(document.pointerLockElement == this.canvas);
     })
 
-    let mainRenderer = new WebGLRenderer({ antialias: false, canvas: this.canvas });
+    let mainRenderer = new WebGLRenderer({ antialias: true, canvas: this.canvas });
     this.rendererManager.addRenderer('main', mainRenderer);
-    let renderer2 = new WebGLRenderer({ antialias: false });
+    let renderer2 = new WebGLRenderer({ antialias: true });
     document.querySelector('.wrapper')?.appendChild(renderer2.domElement);
     this.rendererManager.addRenderer('renderer2', renderer2);
     this.setupRenderer();
@@ -64,7 +64,7 @@ class App extends GameEvent {
   setupRenderer(): void {
     this.rendererManager.getAll().forEach(renderer => {
       renderer.setClearColor(0xffffff);
-      renderer.shadowMap.enabled = false;
+      renderer.shadowMap.enabled = true;
       renderer.shadowMap.type = PCFSoftShadowMap;
       let aspectRatio = renderer.domElement.width / renderer.domElement.height;
       renderer.setPixelRatio(aspectRatio);
