@@ -3,46 +3,46 @@
 @tailwind utilities;
 
 body {
-    @apply flex flex-col bg-gray-900 text-gray-50 h-screen w-screen;
+  @apply flex flex-col bg-gray-900 text-gray-50 h-screen w-screen;
 }
 
 header {
-    @apply flex p-4 gap-2 shadow-yellow-50 shadow-sm items-center uppercase;
+  @apply flex p-4 gap-2 shadow-yellow-50 shadow-sm items-center uppercase;
 }
 
 nav {
-    @apply flex text-sm gap-3 ml-4;
-}
-
-main {
-    @apply flex-grow grid p-4 container max-w-screen-lg justify-items-center relative self-center;
+  @apply flex text-sm gap-3 ml-4;
 }
 
 canvas {
-    @apply bg-gray-600 rounded-md shadow-md w-full h-full;
+  @apply bg-gray-600 rounded-md shadow-md w-full h-full;
 }
 
 .logo {
-    @apply font-bold text-lg;
+  @apply font-bold text-lg;
 }
 
 .loading {
-    @apply bg-gray-700 rounded-full absolute w-96 h-12 overflow-hidden place-self-center shadow-lg shadow-gray-600;
+  @apply bg-gray-700 rounded-full absolute w-96 h-12 overflow-hidden place-self-center shadow-lg shadow-gray-600;
 }
 
 .loading-bar {
-    @apply w-0 bg-teal-500 h-full;
+  @apply w-0 bg-teal-500 h-full;
 }
 
 .loading::before {
-    @apply w-full h-full flex text-white absolute items-center justify-center;
-    content: attr(progress) '%';
+  @apply w-full h-full flex text-white absolute items-center justify-center;
+  content: attr(progress) "%";
 }
 
 .wrapper {
-    @apply relative flex;
+  @apply relative flex;
 }
 
 .ammoPanel {
-    @apply absolute left-0 top-0 bg-gray-700 bg-opacity-40 px-3 text-sm font-bold ;
+  @apply absolute left-0 top-0 bg-gray-700 bg-opacity-40 px-3 text-sm font-bold;
+}
+
+.ui-element {
+  @apply absolute left-0 top-0 select-none text-black;
 }
