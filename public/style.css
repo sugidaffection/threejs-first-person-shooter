@@ -15,7 +15,7 @@ nav {
 }
 
 canvas {
-  @apply bg-gray-600 rounded-md shadow-md w-full h-full;
+  @apply bg-gray-600 shadow-md w-full h-full;
 }
 
 .logo {
@@ -39,10 +39,22 @@ canvas {
   @apply relative flex;
 }
 
-.ammoPanel {
+.ammo-hud {
   @apply absolute left-0 top-0 bg-gray-700 bg-opacity-40 px-3 text-sm font-bold;
 }
 
 .ui-element {
   @apply absolute left-0 top-0 select-none text-black;
+}
+
+.crosshair {
+  background-color: rgb(255, 0, 0);
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  width: 15px;
+  height: 15px;
+  margin: auto;
 }

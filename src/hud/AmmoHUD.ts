@@ -1,16 +1,16 @@
 import { Vector2 } from "three";
-import { Weapon } from "../objects/weapon";
+import { Ammunition, Weapon } from "../objects/weapon";
 import { BaseHUD, BaseHUDOptions } from "./BaseHUD";
 
-export interface IAmmoHUDOptions extends BaseHUDOptions {
-  weaponAmmo: number;
-  totalAmmo: number;
+export interface AmmoHUDOptions extends BaseHUDOptions {
+  currentAmmoCount: number;
+  remainingAmmoCount: number;
 }
 
 export class AmmoHUD extends BaseHUD {
-  options: IAmmoHUDOptions = {
-    weaponAmmo: 0,
-    totalAmmo: 0,
+  options: AmmoHUDOptions = {
+    currentAmmoCount: 0,
+    remainingAmmoCount: 0,
     position: new Vector2(0, 0),
     backgroundColor: "transparent",
   };
@@ -22,12 +22,11 @@ export class AmmoHUD extends BaseHUD {
     this.update();
   }
 
-  setWeapon(weapon: Weapon) {
-    this.options.weaponAmmo = weapon.getCurrentAmmo();
-    this.options.totalAmmo = weapon.getLeftAmmo();
+  updateView(currentAmmoCount: number, remainingAmmoCount: number) {
+    this.options.currentAmmoCount = currentAmmoCount;
+    this.options.remainingAmmoCount = remainingAmmoCount;
+    this.domElement.textContent = `Ammo ${this.options.currentAmmoCount} / ${this.options.remainingAmmoCount}`;
   }
 
-  update() {
-    this.domElement.textContent = `Ammo ${this.options.weaponAmmo} / ${this.options.totalAmmo}`;
-  }
+  update() {}
 }

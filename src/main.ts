@@ -83,6 +83,10 @@ class App extends GameEvent {
   setUI() {
     const ammo = new AmmoHUD();
     this.hudManager.add("ammoPanel", ammo);
+    this.hudManager.domElement.insertAdjacentHTML(
+      "beforeend",
+      '<div class="crosshair"></div>'
+    );
   }
 
   setupRenderer(): void {
@@ -147,7 +151,11 @@ class App extends GameEvent {
     // this.hudManager.setSize(clientWidth, clientHeight);
     const ammoPanel = this.hudManager.get("ammoPanel") as AmmoHUD | undefined;
     const weapon = player.getWeapon();
-    if (ammoPanel) ammoPanel.setWeapon(weapon);
+    if (ammoPanel)
+      ammoPanel.updateView(
+        weapon.currentMagazineCount,
+        player.remainingAmmo.ammoCount
+      );
     this.hudManager.update();
   }
 }

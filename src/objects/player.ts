@@ -1,8 +1,4 @@
-import {
-  Body,
-  Sphere,
-  Vec3
-} from 'cannon-es';
+import { Body, Sphere, Vec3 } from "cannon-es";
 import {
   AudioListener,
   BoxGeometry,
@@ -17,32 +13,32 @@ import {
   Intersection,
   Camera,
   BoxHelper,
-} from 'three';
-import { FirstPersonCamera } from '../cameras/FirstPersonCamera';
-import { assetManager } from '../manager/AssetManager';
-import { cameraManager } from '../manager/CameraManager';
-import { Kriss, UMP47, Weapon } from './weapon';
+} from "three";
+import { FirstPersonCamera } from "../cameras/FirstPersonCamera";
+import { assetManager } from "../manager/AssetManager";
+import { cameraManager } from "../manager/CameraManager";
+import { Ammunition, Kriss, UMP47, Weapon } from "./weapon";
 
 export interface PlayerJSON {
-  id: string,
+  id: string;
   pos: {
-    x: number,
-    y: number,
-    z: number
-  },
+    x: number;
+    y: number;
+    z: number;
+  };
   rot: {
-    x: number,
-    y: number,
-    z: number
-  },
+    x: number;
+    y: number;
+    z: number;
+  };
   vel: {
-    x: number,
-    y: number,
-    z: number
-  },
-  isGrounded: boolean,
-  ammo: number,
-  magazine: number
+    x: number;
+    y: number;
+    z: number;
+  };
+  isGrounded: boolean;
+  ammo: number;
+  magazine: number;
 }
 
 export enum PlayerState {
@@ -54,7 +50,6 @@ export enum PlayerState {
 }
 
 export class Player extends Object3D {
-
   body!: Body;
   walk: boolean = false;
   zoom: boolean = false;
@@ -72,6 +67,8 @@ export class Player extends Object3D {
   private pBody: Object3D;
   private hand: Object3D;
 
+  remainingAmmo: Ammunition = { ammoType: "", ammoCount: 100 } as Ammunition;
+
   constructor(audioListener: AudioListener, color?: string, body?: boolean) {
     super();
     this.audioListener = audioListener;
@@ -79,15 +76,15 @@ export class Player extends Object3D {
     this.raycaster = new Raycaster();
 
     this.add(this.audioListener);
-    this.setFootstepAudio(assetManager.getAudioBuffer('footstep'));
+    this.setFootstepAudio(assetManager.getAudioBuffer("footstep"));
 
     this.hand = new Object3D();
     this.pBody = new Object3D();
 
     const mesh = new Mesh(
-      new BoxGeometry(.3, .7, .3),
+      new BoxGeometry(0.3, 0.7, 0.3),
       new MeshPhongMaterial({
-        color: color || 0xff0000
+        color: color || 0xff0000,
       })
     );
 
@@ -100,12 +97,12 @@ export class Player extends Object3D {
 
     this.add(meshHelper, this.pBody);
 
-    const shape = new Sphere(.4);
+    const shape = new Sphere(0.4);
     if (body !== false) {
       this.body = new Body({
         shape: shape,
-        mass: .5,
-        linearDamping: .9
+        mass: 0.5,
+        linearDamping: 0.9,
       });
       this.position.fromArray(this.body.position.toArray());
     }
@@ -131,25 +128,26 @@ export class Player extends Object3D {
       vel: {
         x: this.body.velocity.x,
         y: this.body.velocity.y,
-        z: this.body.velocity.z
+        z: this.body.velocity.z,
       },
-      isGrounded: this.isGrounded
-    }
+      isGrounded: this.isGrounded,
+    };
   }
 
   setFootstepAudio(audio: AudioBuffer): void {
-    this.footstepAudio = new PositionalAudio(this.audioListener).setBuffer(audio);
-    this.footstepAudio.setPlaybackRate(.5);
+    this.footstepAudio = new PositionalAudio(this.audioListener).setBuffer(
+      audio
+    );
+    this.footstepAudio.setPlaybackRate(0.5);
     this.add(this.footstepAudio);
   }
 
   setWeapon(w: Weapon): void {
     // w.rotation.y = Math.PI / 2;
     w.scale.setScalar(0.05);
-    w.position.set(.2, -.07, -.37);
+    w.position.set(0.2, -0.07, -0.37);
 
-    if (this.weapon)
-      this.hand.remove(w);
+    if (this.weapon) this.hand.remove(w);
     this.hand.add(w);
 
     this.weapon = w;
@@ -168,14 +166,14 @@ export class Player extends Object3D {
   }
 
   fire(): void {
-    let camera = cameraManager.getInstance().get('camera')!;
+    let camera = cameraManager.getInstance().get("camera")!;
     let cameraPos = camera.getWorldPosition(new Vector3());
     let cameraDir = camera.getWorldDirection(new Vector3());
 
     this.raycaster.set(cameraPos, cameraDir);
     let intersects: Intersection[] = [];
     if (this.parent)
-      intersects = this.raycaster.intersectObjects(this.parent?.children)
+      intersects = this.raycaster.intersectObjects(this.parent?.children);
     // if (intersects.length > 0)
     this.weapon?.fire(cameraDir);
   }
@@ -197,7 +195,8 @@ export class Player extends Object3D {
   // }
 
   reload() {
-    this.weapon?.reload();
+    if (this.remainingAmmo.ammoCount > 0)
+      this.weapon?.reload(this.remainingAmmo);
   }
 
   updateFromJSON(data: PlayerJSON): void {
